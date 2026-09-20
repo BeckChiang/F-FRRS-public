@@ -1,0 +1,3801 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1.0,user-scalable=no"
+    />
+    <title>Fractal-Frrs</title>
+    <style>
+      :root {
+        --bg: #1a1a2e;
+        --panel-bg: #16213e;
+        --text: #e0e0e0;
+        --text-secondary: #b0b0b0;
+        --border: #2a3a5c;
+        --accent: #4a9eff;
+        --accent-glow: rgba(74, 158, 255, 0.35);
+        --input-bg: #1c2541;
+        --input-border: #3a4a6c;
+        --highlight: #ffdd57;
+        --danger: #e05555;
+        --success: #4caf84;
+        --shadow: 0 4px 24px rgba(0, 0, 0, 0.5);
+        --radius: 12px;
+        --transition: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        --chain-color-l1: #ff8800;
+        --chain-color-l2: #aa44ff;
+        --card-bg: rgba(0, 0, 0, 0.15);
+        --card-border: var(--border);
+        --blue: #3377dd;
+        --red: #dd3b3b;
+        --blue-bg: rgba(51, 119, 221, 0.15);
+        --red-bg: rgba(221, 59, 59, 0.15);
+        --base-font-size: 15px;
+        --touch-target: 44px;
+        --topo-node: #4a9eff;
+        --topo-edge: #8899aa;
+        --topo-highlight-node: #00cc66;
+        --topo-highlight-edge: #00ccff;
+        --topo-cycle-node: #ff8800;
+        --topo-cycle-edge: #ff8800;
+        --topo-cycle-highlight-node: #ffaa00;
+        --topo-cycle-highlight-edge: #ff4444;
+        --notif-bg: var(--panel-bg);
+        --notif-border: var(--border);
+        --notif-text: var(--text);
+        --notif-success: var(--success);
+        --notif-error: var(--danger);
+        --switch-bg: #3a4a6c;
+        --switch-active: #4a9eff;
+        --switch-knob: #e0e0e0;
+      }
+
+      .light-theme {
+        --bg: #f0f2f5;
+        --panel-bg: #ffffff;
+        --text: #1a1a2e;
+        --text-secondary: #555;
+        --border: #d0d5dd;
+        --accent: #2563eb;
+        --accent-glow: rgba(37, 99, 235, 0.25);
+        --input-bg: #f8f9fa;
+        --input-border: #c0c7d0;
+        --highlight: #e6a817;
+        --danger: #c0392b;
+        --success: #2d8a5e;
+        --shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+        --card-bg: rgba(0, 0, 0, 0.04);
+        --card-border: #d0d5dd;
+        --blue-bg: rgba(51, 119, 221, 0.12);
+        --red-bg: rgba(221, 59, 59, 0.12);
+        --topo-node: #2563eb;
+        --topo-edge: #8899aa;
+        --topo-highlight-node: #00aa44;
+        --topo-highlight-edge: #00aaff;
+        --topo-cycle-node: #e6a817;
+        --topo-cycle-edge: #e6a817;
+        --topo-cycle-highlight-node: #cc9900;
+        --topo-cycle-highlight-edge: #cc2222;
+        --notif-bg: #ffffff;
+        --notif-border: #d0d5dd;
+        --notif-text: #1a1a2e;
+        --switch-bg: #c0c7d0;
+        --switch-active: #2563eb;
+        --switch-knob: #ffffff;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+        font-size: var(--base-font-size);
+        background: var(--bg);
+        color: var(--text);
+        overflow: hidden;
+        height: 100vh;
+        width: 100vw;
+        transition: background 0.3s, color 0.3s;
+      }
+
+      #canvas-container {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 1;
+        cursor: grab;
+      }
+
+      #canvas-container:active {
+        cursor: grabbing;
+      }
+
+      .ui-control {
+        transition: opacity 0.3s, transform 0.3s;
+      }
+
+      body.hide-ui .ui-control,
+      body.hide-ui .ui-control-trigger,
+      body.hide-ui #help-panel {
+        opacity: 0 !important;
+        pointer-events: none !important;
+        transform: scale(0.95);
+      }
+
+      #loading-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 999;
+        background: rgba(0, 0, 0, 0.6);
+        backdrop-filter: blur(4px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        color: #fff;
+        font-size: 18px;
+        gap: 16px;
+      }
+
+      #loading-overlay .spinner {
+        width: 48px;
+        height: 48px;
+        border: 4px solid rgba(255, 255, 255, 0.2);
+        border-top-color: #4a9eff;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      #loading-overlay .msg {
+        background: rgba(0, 0, 0, 0.5);
+        padding: 8px 20px;
+        border-radius: 20px;
+      }
+
+      #loading-overlay .progress-bar {
+        width: 300px;
+        max-width: 70vw;
+        height: 6px;
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 4px;
+        overflow: hidden;
+        margin-top: 4px;
+      }
+
+      #loading-overlay .progress-bar .fill {
+        height: 100%;
+        width: 0%;
+        background: #4a9eff;
+        border-radius: 4px;
+        transition: width 0.3s;
+      }
+
+      #view-indicator {
+        position: fixed;
+        left: 20px;
+        bottom: 30px;
+        z-index: 10;
+        background: var(--panel-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 12px 16px;
+        font-family: "Consolas", monospace;
+        font-size: 13px;
+        color: var(--text);
+        box-shadow: var(--shadow);
+        pointer-events: auto;
+        backdrop-filter: blur(8px);
+        line-height: 1.7;
+        max-width: 400px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      #view-indicator .axis-x {
+        color: #ff6b6b;
+      }
+
+      #view-indicator .axis-y {
+        color: #51cf66;
+      }
+
+      #view-indicator .axis-z {
+        color: #4a9eff;
+      }
+
+      #view-indicator .indicator-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+
+      #view-indicator .help-btn {
+        background: var(--input-bg);
+        border: 1px solid var(--input-border);
+        color: var(--text-secondary);
+        border-radius: 4px;
+        padding: 2px 12px;
+        cursor: pointer;
+        font-size: 12px;
+        font-family: inherit;
+        transition: 0.2s;
+        pointer-events: auto;
+        line-height: 1.6;
+      }
+
+      #view-indicator .help-btn:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      #view-indicator .status-line {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        font-size: 11px;
+        color: var(--text-secondary);
+        margin-top: 4px;
+      }
+
+      #view-indicator .status-line .badge {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 600;
+        padding: 0 8px;
+        border-radius: 10px;
+        background: var(--input-bg);
+        color: var(--text-secondary);
+        border: 1px solid var(--border);
+      }
+
+      #view-indicator .status-line .badge.on {
+        background: var(--success);
+        color: #fff;
+        border-color: var(--success);
+      }
+
+      #view-indicator .status-line .badge.off {
+        background: var(--input-bg);
+        color: var(--text-secondary);
+        border-color: var(--border);
+      }
+
+      #help-panel {
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        z-index: 300;
+        background: var(--panel-bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 20px 28px 24px;
+        max-width: 520px;
+        width: 90%;
+        box-shadow: 0 12px 60px rgba(0, 0, 0, 0.7);
+        backdrop-filter: blur(16px);
+        transition: opacity 0.25s, transform 0.25s;
+        opacity: 0;
+        pointer-events: none;
+        transform: translate(-50%, -50%) scale(0.96);
+        font-size: 14px;
+        line-height: 1.8;
+      }
+
+      #help-panel.visible {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translate(-50%, -50%) scale(1);
+      }
+
+      #help-panel .help-title {
+        font-size: 17px;
+        font-weight: 700;
+        color: var(--accent);
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      #help-panel .help-title .close-help {
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 22px;
+        cursor: pointer;
+        padding: 0 4px;
+        line-height: 1;
+      }
+
+      #help-panel .help-title .close-help:hover {
+        color: var(--text);
+      }
+
+      #help-panel .help-body {
+        color: var(--text-secondary);
+        white-space: pre-wrap;
+        font-family: "Consolas", monospace;
+        font-size: 13px;
+        max-height: 50vh;
+        overflow-y: auto;
+        padding-right: 4px;
+      }
+
+      #help-panel .help-body kbd {
+        background: var(--input-bg);
+        padding: 0 6px;
+        border-radius: 3px;
+        border: 1px solid var(--input-border);
+        font-family: inherit;
+        font-size: 12px;
+        color: var(--text);
+      }
+
+      #undo-redo-toolbar {
+        position: fixed;
+        bottom: 30px;
+        right: 20px;
+        z-index: 15;
+        display: flex;
+        gap: 8px;
+        background: var(--panel-bg);
+        padding: 8px 12px;
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow);
+        backdrop-filter: blur(12px);
+      }
+
+      #undo-redo-toolbar button {
+        padding: 6px 10px;
+        font-size: 20px;
+        font-weight: 400;
+        border-radius: 6px;
+        border: 1px solid var(--input-border);
+        background: var(--input-bg);
+        color: var(--text);
+        cursor: pointer;
+        transition: 0.2s;
+        line-height: 1;
+        width: 38px;
+        min-height: var(--touch-target);
+      }
+
+      #undo-redo-toolbar button:hover:not(:disabled) {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      #undo-redo-toolbar button:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+
+      #btn-mech-list {
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        z-index: 100;
+        background: var(--panel-bg);
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-radius: 20px;
+        padding: 8px 18px;
+        cursor: pointer;
+        font-size: 14px;
+        box-shadow: var(--shadow);
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        backdrop-filter: blur(8px);
+        font-family: inherit;
+        white-space: nowrap;
+        user-select: none;
+        min-height: var(--touch-target);
+      }
+
+      #btn-mech-list:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      #btn-mech-list.active {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+
+      #mech-panel {
+        position: fixed;
+        top: 70px;
+        left: 20px;
+        width: 420px;
+        max-height: calc(100vh - 100px);
+        overflow-y: auto;
+        z-index: 50;
+        background: var(--panel-bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 12px 14px 14px;
+        box-shadow: var(--shadow);
+        transition: all var(--transition), opacity 0.3s;
+        font-size: 14px;
+        backdrop-filter: blur(12px);
+        scrollbar-width: thin;
+        scrollbar-color: var(--border) transparent;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateX(-440px);
+      }
+
+      #mech-panel::-webkit-scrollbar {
+        width: 4px;
+      }
+
+      #mech-panel::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 4px;
+      }
+
+      #mech-panel.visible {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateX(0);
+      }
+
+      #mech-panel .mech-item {
+        padding: 10px 12px;
+        margin-bottom: 6px;
+        border-radius: 6px;
+        cursor: pointer;
+        background: var(--card-bg);
+        border-left: 3px solid transparent;
+        font-size: 13px;
+        line-height: 1.6;
+        color: var(--text);
+        transition: background 0.2s, border-color 0.2s;
+        min-height: 44px;
+      }
+
+      #mech-panel .mech-item:hover {
+        background: rgba(74, 158, 255, 0.08);
+      }
+
+      #mech-panel .mech-item.active {
+        background: rgba(74, 158, 255, 0.18);
+        border-left-color: var(--accent);
+      }
+
+      #mech-panel .mech-item .mech-id {
+        font-weight: 700;
+        color: var(--accent);
+        font-size: 14px;
+      }
+
+      #mech-panel .mech-item .mech-detail {
+        display: grid;
+        grid-template-columns: auto 1fr;
+        gap: 0 10px;
+        margin-top: 2px;
+        color: var(--text-secondary);
+      }
+
+      #mech-panel .mech-item .mech-detail .label {
+        opacity: 0.7;
+        font-size: 12px;
+      }
+
+      #mech-panel .mech-item .mech-detail .value {
+        font-family: "Consolas", monospace;
+        color: var(--text);
+        font-size: 12px;
+      }
+
+      #mech-panel .mech-item .mech-detail .value.highlight {
+        color: var(--accent);
+      }
+
+      #mech-panel .mech-empty {
+        color: var(--text-secondary);
+        font-size: 13px;
+        text-align: center;
+        padding: 20px 0;
+      }
+
+      .mech-conn-badge {
+        display: inline-block;
+        background: var(--accent);
+        color: #fff;
+        border-radius: 10px;
+        padding: 0 10px;
+        font-size: 10px;
+        font-weight: 600;
+        margin-left: 6px;
+      }
+
+      .top-buttons {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 100;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+      }
+
+      .top-btn {
+        background: var(--panel-bg);
+        border: 1px solid var(--border);
+        color: var(--text);
+        border-radius: 20px;
+        padding: 8px 18px;
+        cursor: pointer;
+        font-size: 14px;
+        box-shadow: var(--shadow);
+        transition: all 0.3s;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        backdrop-filter: blur(8px);
+        font-family: inherit;
+        white-space: nowrap;
+        min-height: var(--touch-target);
+      }
+
+      .top-btn:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      .top-btn.active {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+
+      .panel {
+        position: fixed;
+        top: 70px;
+        right: 20px;
+        width: 560px;
+        max-height: calc(100vh - 100px);
+        overflow-y: auto;
+        z-index: 50;
+        background: var(--panel-bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 14px 16px 16px;
+        box-shadow: var(--shadow);
+        transition: all var(--transition), opacity 0.3s;
+        font-size: 14px;
+        backdrop-filter: blur(12px);
+        scrollbar-width: thin;
+        scrollbar-color: var(--border) transparent;
+      }
+
+      .panel::-webkit-scrollbar {
+        width: 4px;
+      }
+
+      .panel::-webkit-scrollbar-thumb {
+        background: var(--border);
+        border-radius: 4px;
+      }
+
+      .panel.hidden {
+        opacity: 0;
+        pointer-events: none;
+        transform: translateX(580px);
+      }
+
+      #ui-panel .ui-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+      }
+
+      #ui-panel .ui-card {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 8px;
+        padding: 12px 14px 14px;
+      }
+
+      #ui-panel .ui-card .card-label {
+        font-weight: 600;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .control-row,
+      .panel .control-row,
+      #ui-panel .ui-card .control-row {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        margin-bottom: 4px;
+        flex-wrap: wrap;
+      }
+
+      .step-btn,
+      .panel .step-btn,
+      #ui-panel .ui-card .step-btn {
+        background: var(--input-bg);
+        border: 1px solid var(--input-border);
+        color: var(--text);
+        padding: 3px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 11px;
+        flex-shrink: 0;
+        transition: 0.2s;
+        font-family: inherit;
+        min-height: var(--touch-target);
+      }
+
+      .step-btn:hover,
+      .panel .step-btn:hover,
+      #ui-panel .ui-card .step-btn:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      .step-btn:disabled,
+      .panel .step-btn:disabled,
+      #ui-panel .ui-card .step-btn:disabled {
+        opacity: 0.3;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+
+      .btn-primary,
+      .panel .btn-primary,
+      #ui-panel .ui-card .btn-primary {
+        background: var(--accent);
+        color: #fff;
+        padding: 7px 0;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        font-weight: 500;
+        transition: 0.2s;
+        font-family: inherit;
+        min-height: var(--touch-target);
+      }
+
+      .btn-primary:hover,
+      .panel .btn-primary:hover,
+      #ui-panel .ui-card .btn-primary:hover {
+        filter: brightness(1.1);
+      }
+
+      .btn-primary:disabled,
+      .panel .btn-primary:disabled,
+      #ui-panel .ui-card .btn-primary:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+
+      .control-row input,
+      .panel .control-row input,
+      #ui-panel .ui-card .control-row input,
+      #ui-panel .ui-card input[type="number"],
+      .panel .control-row input[type="number"],
+      .panel .merged-row input[type="number"] {
+        width: 60px;
+        text-align: center;
+        flex-shrink: 0;
+        padding: 4px;
+        border-radius: 4px;
+        border: 1px solid var(--input-border);
+        background: var(--input-bg);
+        color: var(--text);
+        font-family: "Consolas", monospace;
+        font-size: 13px;
+        outline: none;
+        transition: 0.2s;
+        -moz-appearance: textfield;
+        appearance: none;
+      }
+
+      .control-row input::-webkit-outer-spin-button,
+      .control-row input::-webkit-inner-spin-button,
+      .panel .control-row input::-webkit-outer-spin-button,
+      .panel .control-row input::-webkit-inner-spin-button,
+      #ui-panel .ui-card .control-row input::-webkit-outer-spin-button,
+      #ui-panel .ui-card .control-row input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+
+      .control-row input:focus,
+      .panel .control-row input:focus,
+      #ui-panel .ui-card .control-row input:focus,
+      .panel .merged-row input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.2);
+      }
+
+      .control-row input:disabled,
+      .panel .control-row input:disabled,
+      #ui-panel .ui-card .control-row input:disabled,
+      .panel .merged-row input:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+
+      .panel .section {
+        background: var(--card-bg);
+        border-radius: 8px;
+        padding: 12px 14px;
+        margin-bottom: 12px;
+        border: 1px solid var(--card-border);
+      }
+
+      .panel .section-label {
+        font-weight: 600;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 0.6px;
+        color: var(--text-secondary);
+        margin-bottom: 6px;
+      }
+
+      .panel .section-label.active-label {
+        color: var(--accent);
+      }
+
+      .panel .merged-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: wrap;
+        margin-top: 4px;
+      }
+
+      .panel .merged-row label {
+        margin: 0;
+        font-size: 12px;
+        white-space: nowrap;
+      }
+
+      .panel .merged-row input {
+        width: 60px;
+        flex-shrink: 0;
+        padding: 4px;
+        border-radius: 4px;
+        border: 1px solid var(--input-border);
+        background: var(--input-bg);
+        color: var(--text);
+        font-family: "Consolas", monospace;
+        font-size: 13px;
+        outline: none;
+        transition: 0.2s;
+      }
+
+      .panel .merged-row input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.2);
+      }
+
+      .panel .merged-row .scale-btn {
+        background: var(--input-bg);
+        border: 1px solid var(--input-border);
+        color: var(--text);
+        padding: 3px 12px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 11px;
+        transition: 0.2s;
+        flex-shrink: 0;
+        font-family: inherit;
+        min-height: var(--touch-target);
+      }
+
+      .panel .merged-row .scale-btn:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      .panel .info-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 4px 0;
+        font-size: 13px;
+        border-bottom: 1px solid rgba(128, 128, 128, 0.12);
+      }
+
+      .panel .info-label {
+        color: var(--text-secondary);
+        font-size: 12px;
+      }
+
+      .panel .info-value {
+        font-weight: 600;
+        font-family: "Consolas", monospace;
+        color: var(--accent);
+        font-size: 12px;
+        word-break: break-all;
+        text-align: right;
+        max-width: 60%;
+      }
+
+      .panel .readonly-input {
+        background: var(--input-bg);
+        opacity: 0.7;
+        cursor: default;
+      }
+
+      .panel .file-input-wrapper {
+        position: relative;
+        overflow: hidden;
+        display: inline-block;
+        width: 100%;
+      }
+
+      .panel .file-input-wrapper input[type="file"] {
+        position: absolute;
+        left: 0;
+        top: 0;
+        opacity: 0;
+        width: 100%;
+        height: 100%;
+        cursor: pointer;
+      }
+
+      .panel .file-input-wrapper .fake-btn {
+        width: 100%;
+        padding: 6px 0;
+        background: var(--input-bg);
+        border: 1px solid var(--input-border);
+        border-radius: 6px;
+        text-align: center;
+        color: var(--text-secondary);
+        font-size: 12px;
+        transition: 0.2s;
+        cursor: pointer;
+        font-family: inherit;
+        min-height: var(--touch-target);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+      }
+
+      .panel .file-input-wrapper .fake-btn:hover {
+        border-color: var(--accent);
+        color: var(--text);
+      }
+
+      .panel .file-input-wrapper .fake-btn.import-btn {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+
+      .panel .file-input-wrapper .fake-btn.import-btn:hover {
+        filter: brightness(1.1);
+        color: #fff;
+      }
+
+      .panel .btn-row {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+
+      .panel .btn-row .btn-primary,
+      .panel .btn-row .btn-danger {
+        flex: 1;
+        min-width: 60px;
+        padding: 6px 0;
+        font-size: 12px;
+        text-align: center;
+        min-height: var(--touch-target);
+      }
+
+      .panel .btn-danger {
+        background: var(--danger);
+        color: #fff;
+        padding: 7px 0;
+        border-radius: 6px;
+        border: none;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 13px;
+        transition: 0.2s;
+        font-family: inherit;
+        min-height: var(--touch-target);
+      }
+
+      .panel .btn-danger:hover {
+        filter: brightness(1.1);
+      }
+
+      .panel .btn-danger:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+
+      .panel .grid-2col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px 14px;
+      }
+
+      .panel .grid-2col .col-item {
+        background: var(--card-bg);
+        border-radius: 6px;
+        padding: 8px 10px;
+        border: 1px solid var(--card-border);
+      }
+      /* ===== 生成面板：导入导出行 ===== */
+      #gen-panel .gen-io-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 6px;
+        align-items: stretch;
+        margin-top: 4px;
+      }
+      #gen-panel .gen-io-row > button,
+      #gen-panel .gen-io-row .file-input-wrapper {
+        width: 100%;
+        min-height: 32px;
+        margin: 0;
+      }
+      #gen-panel .gen-io-row .btn-primary {
+        min-height: 32px;
+        padding: 5px 4px;
+        font-size: 12px;
+        text-align: center;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        border-radius: 5px;
+      }
+      #gen-panel .gen-io-row .file-input-wrapper .fake-btn {
+        width: 100%;
+        min-height: 32px;
+        padding: 5px 4px;
+        font-size: 12px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        border-radius: 5px;
+      }
+
+      /* ===== 生成面板：机构尺寸左右分栏 ===== */
+      #gen-panel .gen-layout {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: stretch;
+        margin-top: 4px;
+      }
+      #gen-panel .gen-fields {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        min-width: 0;
+      }
+      #gen-panel .gen-field-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        flex-wrap: nowrap;
+        min-width: 0;
+      }
+      #gen-panel .gen-field-row label {
+        font-size: 12px;
+        white-space: nowrap;
+        flex-shrink: 0;
+        margin: 0;
+        color: var(--text-secondary);
+      }
+      #gen-panel .gen-field-row input {
+        width: 62px;
+        min-width: 0;
+        flex-shrink: 1;
+        padding: 4px 2px;
+        border-radius: 4px;
+        border: 1px solid var(--input-border);
+        background: var(--input-bg);
+        color: var(--text);
+        font-family: "Consolas", monospace;
+        font-size: 12px;
+        text-align: center;
+        outline: none;
+        transition: 0.2s;
+        -moz-appearance: textfield;
+        appearance: textfield;
+      }
+      #gen-panel .gen-field-row input::-webkit-outer-spin-button,
+      #gen-panel .gen-field-row input::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+      #gen-panel .gen-field-row input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.2);
+      }
+      #gen-panel .gen-field-row input:disabled {
+        opacity: 0.55;
+        cursor: not-allowed;
+      }
+      #gen-panel .gen-field-row .scale-btn {
+        flex: 1;
+        min-width: 0;
+        min-height: 28px;
+        padding: 3px 6px;
+        background: var(--input-bg);
+        border: 1px solid var(--input-border);
+        color: var(--text);
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 11px;
+        font-weight: 500;
+        font-family: inherit;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        transition: 0.2s;
+      }
+      #gen-panel .gen-field-row .scale-btn:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+      #gen-panel .gen-hint {
+        font-size: 11px;
+        color: var(--text-secondary);
+        margin-top: 2px;
+        line-height: 1.3;
+      }
+
+      /* 生成按钮：右侧竖向撑满 */
+      #gen-panel .gen-action {
+        display: flex;
+        align-items: stretch;
+        flex-shrink: 0;
+      }
+      #gen-panel .gen-btn-large {
+        min-width: 110px;
+        max-width: 140px;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 8px 10px;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.35;
+        white-space: normal;
+        word-break: break-word;
+        border-radius: 8px;
+      }
+
+      #ui-panel .ui-card .lang-switcher {
+        display: flex;
+        gap: 6px;
+      }
+
+      #ui-panel .ui-card .lang-btn {
+        background: var(--input-bg);
+        border: 1px solid var(--input-border);
+        color: var(--text-secondary);
+        padding: 4px 16px;
+        border-radius: 12px;
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 500;
+        transition: all 0.2s;
+        font-family: inherit;
+        min-height: var(--touch-target);
+      }
+
+      #ui-panel .ui-card .lang-btn:hover {
+        border-color: var(--accent);
+        color: var(--text);
+      }
+
+      #ui-panel .ui-card .lang-btn.active {
+        background: var(--accent);
+        border-color: var(--accent);
+        color: #fff;
+      }
+
+      #ui-panel .ui-card .theme-btn {
+        width: 100%;
+        padding: 6px 0;
+        border-radius: 6px;
+        border: 1px solid var(--input-border);
+        background: var(--input-bg);
+        color: var(--text);
+        cursor: pointer;
+        font-size: 12px;
+        font-weight: 500;
+        transition: 0.2s;
+        font-family: inherit;
+        min-height: var(--touch-target);
+      }
+
+      #ui-panel .ui-card .theme-btn:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      #ui-panel .ui-card .switch {
+        position: relative;
+        display: inline-block;
+        width: 44px;
+        height: 24px;
+        flex-shrink: 0;
+        cursor: pointer;
+      }
+
+      #ui-panel .ui-card .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      #ui-panel .ui-card .switch .slider {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: var(--switch-bg);
+        border-radius: 24px;
+        transition: 0.3s;
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+        border: 1px solid var(--border);
+      }
+
+      #ui-panel .ui-card .switch .slider::before {
+        content: "";
+        position: absolute;
+        height: 18px;
+        width: 18px;
+        left: 2px;
+        bottom: 2px;
+        background: var(--switch-knob);
+        border-radius: 50%;
+        transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+      }
+
+      #ui-panel .ui-card .switch input:checked + .slider {
+        background: var(--switch-active);
+        box-shadow: 0 0 12px var(--accent-glow);
+      }
+
+      #ui-panel .ui-card .switch input:checked + .slider::before {
+        transform: translateX(20px);
+      }
+
+      #ui-panel .ui-card .anim-toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 2px 0;
+      }
+
+      #ui-panel .ui-card .anim-toggle-row .label {
+        font-size: 13px;
+        font-weight: 500;
+        color: var(--text-secondary);
+      }
+
+      #ui-panel .ui-card .anim-toggle-row .label .status-badge {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 600;
+        padding: 1px 12px;
+        border-radius: 10px;
+        margin-left: 6px;
+        transition: all 0.3s;
+        background: var(--input-bg);
+        color: var(--text-secondary);
+        border: 1px solid var(--border);
+      }
+
+      #ui-panel .ui-card .anim-toggle-row .label .status-badge.on {
+        background: var(--success);
+        color: #fff;
+        border-color: var(--success);
+      }
+
+      #ui-panel .ui-card .anim-duration-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 4px;
+        flex-wrap: wrap;
+      }
+
+      #ui-panel .ui-card .anim-duration-row label {
+        font-size: 12px;
+        margin: 0;
+        white-space: nowrap;
+      }
+
+      #ui-panel .ui-card .anim-duration-row input {
+        width: 64px;
+        text-align: center;
+        padding: 4px;
+        font-size: 12px;
+      }
+
+      #ui-panel .ui-card .anim-duration-row .step-btn {
+        font-size: 10px;
+        padding: 2px 10px;
+        min-height: var(--touch-target);
+      }
+
+      #ui-panel .ui-card .hint-text {
+        font-size: 11px;
+        color: var(--text-secondary);
+        margin-top: 3px;
+        opacity: 0.7;
+      }
+
+      #ui-panel .ui-card .grid-size-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-top: 4px;
+        flex-wrap: wrap;
+      }
+
+      #ui-panel .ui-card .grid-size-row label {
+        font-size: 12px;
+        margin: 0;
+        white-space: nowrap;
+      }
+
+      #ui-panel .ui-card .grid-size-row input {
+        width: 60px;
+        text-align: center;
+        padding: 4px;
+        font-size: 12px;
+      }
+
+      #ui-panel .ui-card .screenshot-row {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      #ui-panel .ui-card .screenshot-row select {
+        flex: 1;
+        min-width: 80px;
+        background: var(--input-bg);
+        color: var(--text);
+        border: 1px solid var(--input-border);
+        border-radius: 4px;
+        padding: 4px;
+        font-size: 12px;
+        font-family: inherit;
+        min-height: var(--touch-target);
+      }
+
+      #ui-panel .ui-card .screenshot-custom {
+        margin-top: 4px;
+        display: none;
+      }
+
+      #ui-panel .ui-card .screenshot-custom.visible {
+        display: block;
+      }
+
+      #ui-panel .ui-card .screenshot-custom .custom-row {
+        display: flex;
+        gap: 4px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      #ui-panel .ui-card .screenshot-custom .custom-row label {
+        font-size: 12px;
+        margin: 0;
+      }
+
+      #ui-panel .ui-card .screenshot-custom .custom-row input {
+        width: 54px;
+        text-align: center;
+        padding: 3px 4px;
+        font-size: 12px;
+      }
+
+      #ui-panel .ui-card .btn-screenshot {
+        width: 100%;
+        padding: 6px 0;
+        border-radius: 6px;
+        border: none;
+        background: var(--accent);
+        color: #fff;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        transition: 0.2s;
+        font-family: inherit;
+        margin-top: 4px;
+        min-height: var(--touch-target);
+      }
+
+      #ui-panel .ui-card .btn-screenshot:hover {
+        filter: brightness(1.1);
+      }
+
+      .conn-plane-badge {
+        display: inline-block;
+        padding: 0 8px;
+        border-radius: 4px;
+        font-weight: 700;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      .conn-plane-badge.cyan-bg {
+        background-color: #00ccff;
+        color: #000;
+      }
+
+      .conn-plane-badge.purple-bg {
+        background-color: #aa44ff;
+        color: #fff;
+      }
+
+      #conn-panel .conn-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 4px 0;
+        border-bottom: 1px solid rgba(128, 128, 128, 0.12);
+        font-size: 14px;
+        transition: background 0.2s, border-color 0.2s;
+        min-height: 36px;
+      }
+
+      #conn-panel .conn-item .info {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+
+      #conn-panel .conn-item .info .badge {
+        background: var(--accent);
+        color: #fff;
+        border-radius: 3px;
+        padding: 0 8px;
+        font-size: 10px;
+      }
+
+      #conn-panel .conn-item .del-btn {
+        background: transparent;
+        color: var(--danger);
+        border: none;
+        cursor: pointer;
+        font-size: 15px;
+        padding: 0 6px;
+        line-height: 1;
+        font-family: inherit;
+        min-height: var(--touch-target);
+      }
+
+      #conn-panel .conn-item .del-btn:hover {
+        color: #ff8888;
+      }
+
+      #conn-panel .conn-empty {
+        color: var(--text-secondary);
+        font-style: italic;
+        font-size: 14px;
+      }
+
+      #conn-panel .conn-grid .conn-item.highlight {
+        background: var(--accent-glow);
+        border-left: 3px solid var(--accent);
+        border-radius: 2px;
+        padding-left: 8px;
+      }
+
+      /* ===== 连接面板：紧凑两行布局 ===== */
+
+      /* --- 第一行：A | B | 多选开关 --- */
+      #conn-panel .conn-row-top {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+        gap: 6px;
+        align-items: stretch;
+        margin-bottom: 8px;
+      }
+
+      #conn-panel .conn-row-top .conn-info-box {
+        min-width: 0;
+        min-height: 30px;
+        padding: 3px 8px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      #conn-panel .conn-row-top .conn-info-box .label {
+        font-size: 10px;
+        line-height: 1.2;
+      }
+
+      #conn-panel .conn-row-top .conn-info-box .data {
+        font-size: 12px;
+        line-height: 1.3;
+        font-family: "Consolas", monospace;
+        font-weight: 600;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      #conn-panel .conn-row-top .conn-info-box .data .conn-plane-badge {
+        font-size: 12px;
+        padding: 0 6px;
+        line-height: 1.5;
+      }
+
+      #conn-panel .conn-row-top .mode-toggle-row {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-wrap: nowrap;
+        padding: 0;
+        width: auto;
+      }
+
+      #conn-panel .conn-row-top .mode-toggle-row .mode-label {
+        font-size: 12px;
+        font-weight: 500;
+        color: var(--text-secondary);
+        white-space: nowrap;
+        transition: color 0.3s;
+      }
+
+      #conn-panel .conn-row-top .mode-toggle-row .mode-label.active-label {
+        color: var(--accent);
+        font-weight: 600;
+      }
+
+      #conn-panel .conn-row-top .mode-toggle-row .mode-label .status-badge {
+        display: inline-block;
+        font-size: 10px;
+        font-weight: 600;
+        padding: 0 8px;
+        border-radius: 10px;
+        margin-left: 4px;
+        transition: all 0.3s;
+        background: var(--input-bg);
+        color: var(--text-secondary);
+        border: 1px solid var(--border);
+      }
+
+      #conn-panel .conn-row-top .mode-toggle-row .mode-label .status-badge.on {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+
+      #conn-panel .conn-row-top .switch {
+        position: relative;
+        display: inline-block;
+        width: 36px;
+        height: 20px;
+        flex-shrink: 0;
+        cursor: pointer;
+      }
+
+      #conn-panel .conn-row-top .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      #conn-panel .conn-row-top .switch .slider {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: var(--switch-bg);
+        border-radius: 20px;
+        transition: 0.3s;
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+        border: 1px solid var(--border);
+      }
+
+      #conn-panel .conn-row-top .switch .slider::before {
+        content: "";
+        position: absolute;
+        height: 14px;
+        width: 14px;
+        left: 2px;
+        bottom: 2px;
+        background: var(--switch-knob);
+        border-radius: 50%;
+        transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+      }
+
+      #conn-panel .conn-row-top .switch input:checked + .slider {
+        background: var(--switch-active);
+        box-shadow: 0 0 8px var(--accent-glow);
+      }
+
+      #conn-panel .conn-row-top .switch input:checked + .slider::before {
+        transform: translateX(16px);
+      }
+
+      /* --- 第二行：连接 / 清除 / 重新排序 --- */
+      #conn-panel .conn-row-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 6px;
+      }
+
+      #conn-panel .conn-row-actions > button {
+        width: 100%;
+        min-height: 32px;
+        padding: 5px 0;
+        font-size: 12px;
+        font-weight: 500;
+        line-height: 1;
+        border-radius: 5px;
+        font-family: inherit;
+      }
+
+      #conn-panel .conn-row-actions #btn-connect {
+        min-height: 32px;
+        padding: 5px 0;
+        font-size: 12px;
+      }
+
+      #conn-panel .chain-label {
+        font-weight: 600;
+        font-size: 13px;
+        margin-top: 4px;
+      }
+
+      #conn-panel .chain-label.l1 {
+        color: var(--chain-color-l1);
+      }
+
+      #conn-panel .chain-label.l2 {
+        color: var(--chain-color-l2);
+      }
+
+      #conn-panel #chain-info-l1 {
+        margin-top: 2px;
+        padding: 6px 10px;
+        background: rgba(255, 136, 0, 0.08);
+        border-radius: 4px;
+        border-left: 3px solid var(--chain-color-l1);
+        font-size: 13px;
+        color: var(--text-secondary);
+        min-height: 26px;
+        word-break: break-all;
+      }
+
+      #conn-panel #chain-info-l2 {
+        margin-top: 2px;
+        padding: 6px 10px;
+        background: rgba(170, 68, 255, 0.08);
+        border-radius: 4px;
+        border-left: 3px solid var(--chain-color-l2);
+        font-size: 13px;
+        color: var(--text-secondary);
+        min-height: 26px;
+        word-break: break-all;
+      }
+
+      #conn-panel .highlight-text {
+        font-weight: 600;
+      }
+
+      #conn-panel .conn-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px 14px;
+        max-height: 300px;
+        overflow-y: auto;
+        padding-right: 4px;
+      }
+
+      #conn-panel .conn-grid .conn-item {
+        border-bottom: 1px solid rgba(128, 128, 128, 0.08);
+        padding: 6px 4px;
+        font-size: 14px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      #conn-panel .conn-grid .conn-item .info {
+        display: flex;
+        gap: 6px;
+        align-items: center;
+        flex-wrap: wrap;
+        font-size: 14px;
+      }
+
+      #conn-panel .conn-grid .conn-item .info .badge {
+        font-size: 10px;
+        padding: 0 8px;
+      }
+
+      #conn-panel .conn-grid .conn-item .del-btn {
+        font-size: 15px;
+      }
+
+      .ui-control-trigger {
+        position: fixed;
+        bottom: 36px;
+        right: 140px;
+        z-index: 15;
+        font-size: 26px;
+        cursor: pointer;
+        background: var(--panel-bg);
+        border: 1px solid var(--border);
+        border-radius: 50%;
+        width: 46px;
+        height: 46px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: var(--shadow);
+        transition: opacity 0.3s, transform 0.3s, background 0.3s;
+        user-select: none;
+      }
+
+      .ui-control-trigger:hover {
+        border-color: var(--accent);
+        background: var(--input-bg);
+      }
+
+      .highlight-badge {
+        background: var(--highlight);
+        color: #1a1a2e;
+        border-radius: 4px;
+        padding: 2px 10px;
+        font-weight: 700;
+        font-size: 12px;
+      }
+
+      #topology-container {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 6px;
+        padding: 8px;
+        margin-top: 6px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      #topology-container .topology-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        margin-bottom: 4px;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+
+      #topology-container .topology-title {
+        font-weight: 600;
+        font-size: 13px;
+        color: var(--text-secondary);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      #topology-container .topo-toolbar {
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+
+      #topology-container .topo-toolbar .step-btn {
+        font-size: 11px;
+        padding: 2px 12px;
+        min-height: var(--touch-target);
+        background: var(--input-bg);
+        border: 1px solid var(--input-border);
+        color: var(--text);
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: 0.2s;
+        font-family: inherit;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      #topology-container .topo-toolbar .step-btn:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      #topology-container .topo-toolbar .step-btn:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+
+      #topology-container .topo-toggle {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+
+      #topology-container .topo-toggle .switch {
+        position: relative;
+        display: inline-block;
+        width: 36px;
+        height: 20px;
+        flex-shrink: 0;
+        cursor: pointer;
+      }
+
+      #topology-container .topo-toggle .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      #topology-container .topo-toggle .switch .slider {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: var(--switch-bg);
+        border-radius: 20px;
+        transition: 0.3s;
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+        border: 1px solid var(--border);
+      }
+
+      #topology-container .topo-toggle .switch .slider::before {
+        content: "";
+        position: absolute;
+        height: 14px;
+        width: 14px;
+        left: 2px;
+        bottom: 2px;
+        background: var(--switch-knob);
+        border-radius: 50%;
+        transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+      }
+
+      #topology-container .topo-toggle .switch input:checked + .slider {
+        background: var(--switch-active);
+        box-shadow: 0 0 8px var(--accent-glow);
+      }
+
+      #topology-container .topo-toggle .switch input:checked + .slider::before {
+        transform: translateX(16px);
+      }
+
+      #topology-container canvas {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 16/9;
+        max-height: 200px;
+        background: var(--input-bg);
+        border-radius: 4px;
+        cursor: default;
+      }
+
+      #topology-container .topology-legend {
+        font-size: 11px;
+        color: var(--text-secondary);
+        margin-top: 4px;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      #topology-container .topology-legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      /* ===== 连接矩阵 ===== */
+      #conn-matrix-container {
+        background: var(--card-bg);
+        border: 1px solid var(--card-border);
+        border-radius: 6px;
+        padding: 8px;
+        margin-top: 6px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+
+      #conn-matrix-container .matrix-toolbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+        gap: 8px;
+        margin-bottom: 6px;
+        flex-wrap: wrap;
+      }
+
+      #conn-matrix-container .matrix-mode-tabs {
+        display: flex;
+        gap: 4px;
+        flex-wrap: wrap;
+      }
+
+      #conn-matrix-container .matrix-mode-btn {
+        background: var(--input-bg);
+        border: 1px solid var(--input-border);
+        color: var(--text-secondary);
+        padding: 3px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 11px;
+        font-family: inherit;
+        transition: 0.2s;
+        min-height: 26px;
+      }
+
+      #conn-matrix-container .matrix-mode-btn:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      #conn-matrix-container .matrix-mode-btn.active {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+
+      #conn-matrix-container .matrix-toolbar .step-btn {
+        font-size: 11px;
+        padding: 2px 12px;
+        min-height: 26px;
+        background: var(--input-bg);
+        border: 1px solid var(--input-border);
+        color: var(--text);
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: 0.2s;
+        font-family: inherit;
+      }
+
+      #conn-matrix-container .matrix-toolbar .step-btn:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      #conn-matrix-container canvas {
+        width: 100%;
+        height: auto;
+        aspect-ratio: 16/9;
+        max-height: 250px;
+        background: var(--input-bg);
+        border-radius: 4px;
+        display: block;
+        cursor: default;
+      }
+
+      #conn-matrix-container .matrix-legend {
+        font-size: 11px;
+        color: var(--text-secondary);
+        margin-top: 4px;
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      #conn-matrix-container .matrix-legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .matrix-legend-cell {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 2px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .matrix-legend-cell.normal {
+        background: #4a9eff;
+      }
+
+      .matrix-legend-cell.diag {
+        background: #4caf84;
+      }
+
+      .matrix-legend-cell.base {
+        background: #ffaa33;
+      }
+
+      .matrix-legend-cell.highlight {
+        background: #ffdd57;
+      }
+
+      /* 连接矩阵放大模态框 */
+      #matrix-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 500;
+        background: rgba(0, 0, 0, 0.82);
+        backdrop-filter: blur(6px);
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+
+      #matrix-modal.visible {
+        display: flex;
+      }
+
+      #matrix-modal .modal-box {
+        background: var(--panel-bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px 20px 20px;
+        max-width: 94vw;
+        max-height: 94vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 12px 60px rgba(0, 0, 0, 0.7);
+        width: 100%;
+        height: 100%;
+        max-width: 1200px;
+        max-height: 800px;
+      }
+
+      #matrix-modal .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      #matrix-modal .modal-header .modal-title {
+        font-weight: 700;
+        font-size: 17px;
+        color: var(--accent);
+      }
+
+      #matrix-modal .modal-header .modal-actions {
+        display: flex;
+        gap: 8px;
+      }
+
+      #matrix-modal .modal-header .modal-actions .step-btn {
+        background: var(--input-bg);
+        border: 1px solid var(--input-border);
+        color: var(--text);
+        padding: 4px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 13px;
+        transition: 0.2s;
+        font-family: inherit;
+        min-height: var(--touch-target);
+      }
+
+      #matrix-modal .modal-header .modal-actions .step-btn.save-btn {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+
+      #matrix-modal .modal-body {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--input-bg);
+        border-radius: 6px;
+        overflow: hidden;
+      }
+
+      #matrix-modal .modal-body canvas {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+      }
+
+      .legend-dot {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .legend-dot.normal {
+        background: var(--topo-node);
+      }
+
+      .legend-dot.cycle {
+        background: var(--topo-cycle-node);
+      }
+
+      .legend-dot.highlight {
+        background: var(--topo-highlight-node);
+        box-shadow: 0 0 8px var(--topo-highlight-node);
+      }
+
+      .legend-dot.cycle-highlight {
+        background: var(--topo-cycle-highlight-node);
+        box-shadow: 0 0 8px var(--topo-cycle-highlight-node);
+      }
+
+      .legend-line {
+        display: inline-block;
+        width: 20px;
+        height: 3px;
+        border-radius: 2px;
+      }
+
+      .legend-line.normal {
+        background: var(--topo-edge);
+      }
+
+      .legend-line.cycle {
+        background: var(--topo-cycle-edge);
+      }
+
+      .legend-line.highlight {
+        background: var(--topo-highlight-edge);
+        box-shadow: 0 0 6px var(--topo-highlight-edge);
+      }
+
+      .legend-line.cycle-highlight {
+        background: var(--topo-cycle-highlight-edge);
+        box-shadow: 0 0 6px var(--topo-cycle-highlight-edge);
+      }
+
+      #topo-modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 500;
+        background: rgba(0, 0, 0, 0.82);
+        backdrop-filter: blur(6px);
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+      }
+
+      #topo-modal.visible {
+        display: flex;
+      }
+
+      #topo-modal .modal-box {
+        background: var(--panel-bg);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px 20px 20px;
+        max-width: 94vw;
+        max-height: 94vh;
+        display: flex;
+        flex-direction: column;
+        box-shadow: 0 12px 60px rgba(0, 0, 0, 0.7);
+        width: 100%;
+        height: 100%;
+        max-width: 1200px;
+        max-height: 800px;
+      }
+
+      #topo-modal .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 10px;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      #topo-modal .modal-header .modal-title {
+        font-weight: 700;
+        font-size: 17px;
+        color: var(--accent);
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      #topo-modal .modal-header .modal-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      #topo-modal .modal-header .modal-actions .step-btn {
+        background: var(--input-bg);
+        border: 1px solid var(--input-border);
+        color: var(--text);
+        padding: 4px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 13px;
+        transition: 0.2s;
+        font-family: inherit;
+        min-height: var(--touch-target);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      #topo-modal .modal-header .modal-actions .step-btn:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+      }
+
+      #topo-modal .modal-header .modal-actions .step-btn.save-btn {
+        background: var(--accent);
+        color: #fff;
+        border-color: var(--accent);
+      }
+
+      #topo-modal .modal-header .modal-actions .step-btn.save-btn:hover {
+        filter: brightness(1.1);
+      }
+
+      #topo-modal .modal-body {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--input-bg);
+        border-radius: 6px;
+        overflow: hidden;
+        position: relative;
+      }
+
+      #topo-modal .modal-body canvas {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+        background: var(--input-bg);
+      }
+
+      #notification-container {
+        position: fixed;
+        bottom: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        z-index: 250;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        align-items: center;
+        pointer-events: none;
+        max-width: 90vw;
+        width: 600px;
+      }
+
+      #notification-container .notif-item {
+        pointer-events: auto;
+        background: var(--notif-bg);
+        border: 1px solid var(--notif-border);
+        border-radius: 8px;
+        padding: 10px 20px;
+        box-shadow: var(--shadow);
+        font-size: 14px;
+        font-weight: 500;
+        color: var(--notif-text);
+        backdrop-filter: blur(12px);
+        animation: notifSlideUp 0.35s ease-out;
+        width: 100%;
+        text-align: center;
+        transition: opacity 0.3s, transform 0.3s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        min-height: 44px;
+      }
+
+      #notification-container .notif-item .notif-icon {
+        font-size: 18px;
+        flex-shrink: 0;
+      }
+
+      #notification-container .notif-item .notif-close {
+        background: transparent;
+        border: none;
+        color: var(--text-secondary);
+        font-size: 16px;
+        cursor: pointer;
+        padding: 0 4px;
+        line-height: 1;
+        flex-shrink: 0;
+        min-height: 28px;
+        min-width: 28px;
+      }
+
+      #notification-container .notif-item .notif-close:hover {
+        color: var(--text);
+      }
+
+      #notification-container .notif-item.success {
+        border-color: var(--notif-success);
+        color: var(--notif-success);
+      }
+
+      #notification-container .notif-item.error {
+        border-color: var(--notif-error);
+        color: var(--notif-error);
+      }
+
+      #notification-container .notif-item.warning {
+        border-color: #f0a030;
+        color: #f0a030;
+      }
+
+      #notification-container .notif-item .notif-msg {
+        flex: 1;
+        word-break: break-word;
+      }
+
+      @keyframes notifSlideUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px) scale(0.96);
+        }
+
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      #notification-container .notif-item.hiding {
+        opacity: 0;
+        transform: translateY(-10px) scale(0.96);
+      }
+
+      @media (max-width: 820px) {
+        #ui-panel .ui-grid {
+          grid-template-columns: 1fr;
+        }
+
+        #ui-panel {
+          width: 400px;
+          right: 10px;
+          padding: 12px;
+        }
+
+        .panel.hidden {
+          transform: translateX(420px);
+        }
+
+        #mech-panel {
+          width: 340px;
+          left: 10px;
+          padding: 10px;
+        }
+
+        #mech-panel.visible {
+          transform: translateX(0);
+        }
+
+        #gen-panel,
+        #op-panel,
+        #conn-panel {
+          width: 400px;
+          right: 10px;
+          padding: 12px;
+        }
+
+        #conn-panel .conn-row-top {
+          grid-template-columns: 1fr 1fr;
+          gap: 6px;
+        }
+
+        #conn-panel .conn-row-top .mode-toggle-row {
+          grid-column: 1 / -1;
+          margin-top: 2px;
+        }
+
+        #conn-panel .conn-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .top-buttons {
+          top: 10px;
+          right: 10px;
+          gap: 4px;
+        }
+
+        .top-btn {
+          font-size: 11px;
+          padding: 5px 12px;
+          min-height: var(--touch-target);
+        }
+
+        #view-indicator {
+          left: 10px;
+          bottom: 80px;
+          padding: 8px 12px;
+          font-size: 11px;
+          max-width: 280px;
+        }
+
+        #undo-redo-toolbar {
+          bottom: 80px;
+          right: 10px;
+          padding: 4px 8px;
+        }
+
+        #undo-redo-toolbar button {
+          font-size: 16px;
+          padding: 4px 8px;
+          width: 32px;
+          min-height: var(--touch-target);
+        }
+
+        .ui-control-trigger {
+          bottom: 80px;
+          right: 70px;
+          width: 38px;
+          height: 38px;
+          font-size: 20px;
+        }
+
+        #btn-mech-list {
+          top: 10px;
+          left: 10px;
+          font-size: 12px;
+          padding: 5px 14px;
+          min-height: var(--touch-target);
+        }
+
+        #help-panel {
+          max-width: 94%;
+          padding: 16px 18px 20px;
+        }
+
+        #help-panel .help-body {
+          font-size: 12px;
+        }
+
+        .panel .grid-2col {
+          grid-template-columns: 1fr;
+        }
+
+        #topo-modal .modal-box {
+          max-width: 96vw;
+          max-height: 92vh;
+          padding: 12px 14px 16px;
+        }
+
+        #topo-modal .modal-header .modal-title {
+          font-size: 15px;
+        }
+
+        #topo-modal .modal-header .modal-actions .step-btn {
+          font-size: 11px;
+          padding: 3px 12px;
+        }
+
+        #notification-container {
+          bottom: 70px;
+          width: 90vw;
+        }
+
+        #notification-container .notif-item {
+          font-size: 13px;
+          padding: 8px 14px;
+        }
+      }
+
+      @media (max-width: 480px) {
+        #ui-panel {
+          width: 300px;
+          right: 6px;
+          padding: 10px 8px;
+          top: 50px;
+          max-height: calc(100vh - 70px);
+        }
+
+        .panel.hidden {
+          transform: translateX(320px);
+        }
+
+        #mech-panel {
+          width: 270px;
+          left: 6px;
+          padding: 8px;
+          top: 50px;
+          max-height: calc(100vh - 70px);
+        }
+
+        #mech-panel.visible {
+          transform: translateX(0);
+        }
+
+        #gen-panel,
+        #op-panel,
+        #conn-panel {
+          width: 300px;
+          right: 6px;
+          padding: 10px 8px;
+          top: 50px;
+          max-height: calc(100vh - 70px);
+        }
+
+        #conn-panel .conn-row-top {
+          grid-template-columns: 1fr 1fr;
+          gap: 4px;
+        }
+
+        #conn-panel .conn-row-top .mode-toggle-row {
+          grid-column: 1 / -1;
+          margin-top: 2px;
+        }
+
+        #conn-panel .conn-row-top .conn-info-box {
+          min-height: 26px;
+          padding: 2px 6px;
+        }
+
+        #conn-panel .conn-row-top .conn-info-box .label {
+          font-size: 9px;
+        }
+
+        #conn-panel .conn-row-top .conn-info-box .data {
+          font-size: 11px;
+        }
+
+        #conn-panel .conn-row-actions {
+          grid-template-columns: 1fr 1fr 1fr;
+          gap: 4px;
+        }
+
+        #conn-panel .conn-row-actions > button {
+          font-size: 11px;
+          padding: 4px 0;
+          min-height: 30px;
+        }
+
+        #conn-panel .conn-grid {
+          grid-template-columns: 1fr;
+        }
+
+        .top-btn {
+          font-size: 10px;
+          padding: 4px 10px;
+          min-height: var(--touch-target);
+        }
+
+        #gen-panel .gen-layout {
+          grid-template-columns: 1fr;
+        }
+        #gen-panel .gen-action {
+          width: 100%;
+        }
+        #gen-panel .gen-btn-large {
+          min-width: 0;
+          max-width: none;
+          width: 100%;
+          min-height: 36px;
+          padding: 6px 10px;
+          height: auto;
+        }
+        #gen-panel .gen-io-row {
+          grid-template-columns: 1fr 1fr;
+        }
+        #gen-panel .gen-io-row .file-input-wrapper {
+          grid-column: 1 / -1;
+        }
+
+        #ui-panel .ui-card {
+          padding: 8px;
+        }
+
+        #ui-panel .ui-card .control-row input {
+          width: 46px;
+          font-size: 11px;
+        }
+
+        #ui-panel .ui-card .control-row span {
+          font-size: 11px;
+          min-width: 12px;
+        }
+
+        #ui-panel .ui-card .step-btn {
+          font-size: 9px;
+          padding: 2px 6px;
+          min-height: var(--touch-target);
+        }
+
+        #ui-panel .ui-card .btn-primary {
+          font-size: 11px;
+          padding: 5px 0;
+          min-height: var(--touch-target);
+        }
+
+        #view-indicator {
+          left: 6px;
+          bottom: 70px;
+          padding: 6px 10px;
+          font-size: 10px;
+          max-width: 200px;
+        }
+
+        #undo-redo-toolbar {
+          bottom: 70px;
+          right: 6px;
+          padding: 4px 6px;
+        }
+
+        #undo-redo-toolbar button {
+          font-size: 13px;
+          padding: 3px 6px;
+          width: 28px;
+          min-height: var(--touch-target);
+        }
+
+        .ui-control-trigger {
+          bottom: 36px;
+          right: 20px;
+          width: 56px;
+          height: 56px;
+          font-size: 28px;
+        }
+
+        #btn-mech-list {
+          font-size: 11px;
+          padding: 4px 12px;
+          top: 6px;
+          left: 6px;
+          min-height: var(--touch-target);
+        }
+
+        #gen-panel .control-row input,
+        #op-panel .control-row input,
+        #conn-panel .control-row input {
+          width: 44px;
+          font-size: 11px;
+        }
+
+        #gen-panel .step-btn,
+        #op-panel .step-btn,
+        #conn-panel .step-btn {
+          font-size: 9px;
+          padding: 2px 6px;
+          min-height: var(--touch-target);
+        }
+
+        #help-panel {
+          max-width: 96%;
+          padding: 12px 14px 16px;
+        }
+
+        #help-panel .help-body {
+          font-size: 11px;
+          max-height: 40vh;
+        }
+
+        .panel .grid-2col {
+          grid-template-columns: 1fr;
+        }
+
+        .panel .conn-grid {
+          grid-template-columns: 1fr;
+        }
+
+        #conn-panel .conn-item {
+          font-size: 12px;
+        }
+
+        #topo-modal .modal-box {
+          max-width: 98vw;
+          max-height: 95vh;
+          padding: 8px 10px 12px;
+        }
+
+        #topo-modal .modal-header .modal-title {
+          font-size: 13px;
+        }
+
+        #topo-modal .modal-header .modal-actions .step-btn {
+          font-size: 10px;
+          padding: 2px 10px;
+          min-height: 36px;
+        }
+
+        #topology-container .topo-toolbar .step-btn {
+          font-size: 9px;
+          padding: 2px 8px;
+          min-height: 36px;
+        }
+
+        #notification-container {
+          bottom: 60px;
+          width: 92vw;
+        }
+
+        #notification-container .notif-item {
+          font-size: 12px;
+          padding: 6px 12px;
+          min-height: 36px;
+        }
+
+        #notification-container .notif-item .notif-icon {
+          font-size: 15px;
+        }
+      }
+    </style>
+  </head>
+
+  <body>
+    <div id="loading-overlay">
+      <div class="spinner"></div>
+      <div class="msg" id="loading-msg">加载中...</div>
+      <div class="progress-bar">
+        <div class="fill" id="progress-fill"></div>
+      </div>
+    </div>
+    <div id="canvas-container"></div>
+    <div id="notification-container"></div>
+    <div id="view-indicator" class="ui-control">
+      <div class="indicator-row">
+        <span
+          style="font-size: 11px; color: var(--text-secondary)"
+          data-i18n="view-focus"
+          >🎯 聚焦点</span
+        >
+        <button class="help-btn" id="btn-help" data-i18n="help-btn">
+          ❓ 帮助
+        </button>
+      </div>
+      <div>
+        <span class="axis-x">X</span>: <span id="cur-fx">0.50</span>
+        <span class="axis-y">Y</span>: <span id="cur-fy">0.50</span>
+        <span class="axis-z">Z</span>: <span id="cur-fz">0.50</span>
+      </div>
+      <div
+        style="font-size: 11px; color: var(--text-secondary); margin-top: 2px"
+        data-i18n="view-cam"
+      >
+        📷 相机参数
+      </div>
+      <div>
+        <span class="axis-x" data-i18n="cam-dist-label">距离</span>:
+        <span id="cam-x">0.00</span>
+        <span class="axis-y" data-i18n="cam-theta-label">θ</span>:
+        <span id="cam-y">0.00</span>
+        <span class="axis-z" data-i18n="cam-phi-label">φ</span>:
+        <span id="cam-z">0.00</span>
+      </div>
+      <div class="status-line">
+        <span id="anim-status-display" data-i18n="anim-status-on"
+          >⏳ 动画: 开启</span
+        >
+        <span id="multi-status-display" data-i18n="multi-status-off"
+          >🔀 多选: 关闭</span
+        >
+        <span id="topo-status-display" data-i18n="topo-status-auto"
+          >🗺️ 拓扑: 自动</span
+        >
+      </div>
+    </div>
+    <div id="help-panel" class="ui-control">
+      <div class="help-title">
+        <span data-i18n="help-title">⌨️ 快捷键帮助</span>
+        <button class="close-help" id="help-close" data-i18n="help-close">
+          ✕
+        </button>
+      </div>
+      <div class="help-body" id="help-body">加载中...</div>
+    </div>
+    <div id="undo-redo-toolbar" class="ui-control">
+      <button id="btn-undo" disabled title="Undo (Ctrl+Z)">↩</button>
+      <button id="btn-redo" disabled title="Redo (Ctrl+Y)">↪</button>
+    </div>
+    <div
+      id="hide-trigger"
+      class="ui-control-trigger"
+      title="隐藏所有控件 (Ctrl+H)"
+    >
+      👁️
+    </div>
+    <button id="btn-mech-list" class="ui-control" data-i18n="list-title">
+      📋 机构列表
+    </button>
+    <div id="mech-panel" class="ui-control">
+      <div id="mech-panel-content">
+        <div class="mech-empty" data-i18n="list-empty">暂无机构</div>
+      </div>
+    </div>
+    <div class="top-buttons ui-control">
+      <button class="top-btn active" id="btn-ui-panel">
+        🎨 <span data-i18n="btn-ui">界面</span>
+      </button>
+      <button class="top-btn" id="btn-gen-panel">
+        🏗️ <span data-i18n="btn-gen">生成</span>
+      </button>
+      <button class="top-btn" id="btn-op-panel">
+        ⚙️ <span data-i18n="btn-op">操作</span>
+      </button>
+      <button class="top-btn" id="btn-conn-panel">
+        🔗 <span data-i18n="btn-conn">连接</span>
+      </button>
+    </div>
+    <!-- 面板 -->
+    <div class="panel ui-control" id="ui-panel">
+      <div class="ui-grid">
+        <div class="ui-card">
+          <div class="card-label">🌐 <span data-i18n="ui-lang">语言</span></div>
+          <div class="lang-switcher">
+            <button class="lang-btn active" data-lang="zh">中文</button>
+            <button class="lang-btn" data-lang="en">English</button>
+          </div>
+        </div>
+        <div class="ui-card">
+          <div class="card-label">
+            🎨 <span data-i18n="ui-theme">主题</span>
+          </div>
+          <button class="theme-btn" id="theme-toggle" data-i18n="ui-theme-dark">
+            🌙 深色主题
+          </button>
+        </div>
+        <div class="ui-card">
+          <div class="card-label">
+            ⏳ <span data-i18n="ui-anim">旋转动画</span>
+          </div>
+          <div class="anim-toggle-row">
+            <span class="label"
+              ><span data-i18n="ui-anim-status">状态</span
+              ><span
+                class="status-badge on"
+                id="anim-status-badge"
+                data-i18n="ui-anim-on"
+                >开启</span
+              ></span
+            >
+            <label class="switch" id="anim-switch">
+              <input type="checkbox" id="anim-checkbox" checked />
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="anim-duration-row">
+            <label data-i18n="ui-anim-duration">时长 (ms)</label>
+            <input
+              type="number"
+              id="anim-duration-input"
+              value="400"
+              step="50"
+              min="50"
+              max="2000"
+            />
+            <button
+              class="step-btn"
+              id="anim-duration-reset"
+              data-i18n="ui-anim-reset"
+            >
+              重置
+            </button>
+          </div>
+          <div class="hint-text" data-i18n="ui-anim-hint">
+            ⚡ 步进/输入均触发动画，联动机构同步过渡
+          </div>
+        </div>
+        <div class="ui-card">
+          <div class="card-label">
+            📸 <span data-i18n="ui-screenshot-title">截屏</span>
+          </div>
+          <div class="screenshot-row">
+            <label
+              style="font-size: 12px; margin: 0; white-space: nowrap"
+              data-i18n="ui-screenshot-res"
+              >分辨率</label
+            >
+            <select id="screenshot-res">
+              <option value="window" data-i18n="ui-screenshot-res-window">
+                当前窗口
+              </option>
+              <option value="720p">1280×720 (720p)</option>
+              <option value="1080p" selected>1920×1080 (1080p)</option>
+              <option value="4k">3840×2160 (4K)</option>
+              <option value="8k">7680×4320 (8K)</option>
+              <option value="custom" data-i18n="ui-screenshot-res-custom">
+                自定义
+              </option>
+            </select>
+          </div>
+          <div class="screenshot-custom" id="screenshot-custom">
+            <div class="custom-row">
+              <label data-i18n="ui-screenshot-width">宽</label>
+              <input
+                type="number"
+                id="screenshot-custom-width"
+                value="1920"
+                min="1"
+                max="8192"
+                step="1"
+              />
+              <label data-i18n="ui-screenshot-height">高</label>
+              <input
+                type="number"
+                id="screenshot-custom-height"
+                value="1080"
+                min="1"
+                max="8192"
+                step="1"
+              />
+            </div>
+          </div>
+          <button
+            class="btn-screenshot"
+            id="btn-screenshot"
+            data-i18n="ui-screenshot-btn"
+          >
+            📸 截屏（隐藏所有控件）
+          </button>
+          <div class="hint-text" data-i18n="ui-screenshot-hint">
+            点击后隐藏控件，按所选分辨率输出高清截图
+          </div>
+        </div>
+        <div class="ui-card">
+          <div class="card-label">
+            🎯 <span data-i18n="ui-focus">聚焦点控制</span>
+          </div>
+          <label data-i18n="ui-focus-x">X 坐标</label>
+          <div class="control-row">
+            <button class="step-btn" id="fx-dec">-0.5</button>
+            <input
+              type="number"
+              id="focus-x"
+              value="0.5"
+              step="0.1"
+              min="-10"
+              max="10"
+            />
+            <button class="step-btn" id="fx-inc">+0.5</button>
+          </div>
+          <label data-i18n="ui-focus-y">Y 坐标</label>
+          <div class="control-row">
+            <button class="step-btn" id="fy-dec">-0.5</button>
+            <input
+              type="number"
+              id="focus-y"
+              value="0.5"
+              step="0.1"
+              min="-10"
+              max="10"
+            />
+            <button class="step-btn" id="fy-inc">+0.5</button>
+          </div>
+          <label data-i18n="ui-focus-z">Z 坐标</label>
+          <div class="control-row">
+            <button class="step-btn" id="fz-dec">-0.5</button>
+            <input
+              type="number"
+              id="focus-z"
+              value="0.5"
+              step="0.1"
+              min="-10"
+              max="10"
+            />
+            <button class="step-btn" id="fz-inc">+0.5</button>
+          </div>
+          <button
+            class="btn-primary"
+            id="btn-focus-apply"
+            data-i18n="ui-focus-apply"
+            style="width: 100%; margin: 0 auto"
+          >
+            应用聚焦点
+          </button>
+          <div class="grid-size-row">
+            <label data-i18n="ui-grid-size">网格尺寸 (2~200)</label>
+            <input
+              type="number"
+              id="grid-size"
+              value="50"
+              step="1"
+              min="2"
+              max="200"
+            />
+          </div>
+        </div>
+        <div class="ui-card">
+          <div class="card-label">
+            📷 <span data-i18n="ui-cam">相机控制</span>
+          </div>
+          <label data-i18n="ui-cam-dist">距离 (1~1000)</label>
+          <div class="control-row">
+            <button class="step-btn" id="cam-dist-dec">-10</button>
+            <input
+              type="number"
+              id="cam-distance"
+              value="8.6"
+              step="0.1"
+              min="1"
+              max="1000"
+            />
+            <button class="step-btn" id="cam-dist-inc">+10</button>
+          </div>
+          <label data-i18n="ui-cam-theta">方位角 θ (°) (水平旋转)</label>
+          <div class="control-row">
+            <button class="step-btn" id="cam-theta-dec">-15°</button>
+            <input
+              type="number"
+              id="cam-theta"
+              value="-42"
+              step="1"
+              min="-360"
+              max="360"
+            />
+            <button class="step-btn" id="cam-theta-inc">+15°</button>
+          </div>
+          <label data-i18n="ui-cam-phi">极角 φ (°) (垂直旋转)</label>
+          <div class="control-row">
+            <button class="step-btn" id="cam-phi-dec">-15°</button>
+            <input
+              type="number"
+              id="cam-phi"
+              value="50"
+              step="1"
+              min="1"
+              max="179"
+            />
+            <button class="step-btn" id="cam-phi-inc">+15°</button>
+          </div>
+          <button
+            class="btn-primary"
+            id="btn-camera-apply"
+            data-i18n="ui-cam-apply"
+            style="width: 100%; margin: 0 auto"
+          >
+            应用相机设置
+          </button>
+        </div>
+      </div>
+    </div>
+    <div class="panel hidden ui-control" id="gen-panel">
+      <!-- 导入 / 导出 -->
+      <div class="section">
+        <div class="section-label" data-i18n="gen-io-title">导入 / 导出</div>
+        <div class="gen-io-row">
+          <button
+            class="btn-primary"
+            id="btn-export"
+            style="background: var(--success)"
+            data-i18n="ui-export"
+          >
+            ⬇ 导出
+          </button>
+          <button
+            class="btn-primary"
+            id="btn-export-sorted"
+            style="background: var(--highlight); color: #1a1a2e"
+            data-i18n="ui-export-sorted"
+          >
+            📊 排序并导出
+          </button>
+          <div class="file-input-wrapper">
+            <div class="fake-btn import-btn" data-i18n="ui-import">⬆ 导入</div>
+            <input
+              type="file"
+              id="file-input"
+              accept=".json,application/json"
+            />
+          </div>
+        </div>
+      </div>
+
+      <!-- 机构尺寸 + 生成 -->
+      <div class="section">
+        <div class="section-label" data-i18n="gen-dim">机构尺寸</div>
+        <div class="gen-layout">
+          <div class="gen-fields">
+            <div class="gen-field-row">
+              <label data-i18n="gen-cube">边长</label>
+              <input
+                type="number"
+                id="gen-cube-size"
+                value="1"
+                step="1"
+                min="1"
+                max="128"
+              />
+              <label data-i18n="gen-scale-factor">倍数</label>
+              <input
+                type="number"
+                id="gen-scale-factor"
+                value="2"
+                step="1"
+                min="2"
+                max="100"
+              />
+            </div>
+            <div class="gen-field-row">
+              <button
+                class="scale-btn"
+                id="gen-scale-up"
+                data-i18n="gen-scale-up"
+              >
+                放大
+              </button>
+              <button
+                class="scale-btn"
+                id="gen-scale-down"
+                data-i18n="gen-scale-down"
+              >
+                缩小
+              </button>
+            </div>
+            <div class="gen-field-row">
+              <label data-i18n="gen-thick">L厚度</label>
+              <input
+                type="number"
+                id="gen-thick"
+                value="0.125"
+                step="0.005"
+                min="0.02"
+                max="64"
+              />
+            </div>
+            <div class="gen-field-row">
+              <label data-i18n="gen-arm">L边长</label>
+              <input
+                type="number"
+                id="gen-arm-size"
+                value="0.75"
+                step="0.01"
+                disabled
+                class="readonly-input"
+              />
+              <label data-i18n="gen-axis">轴径</label>
+              <input
+                type="number"
+                id="gen-axis-diameter"
+                value="0.25"
+                step="0.01"
+                disabled
+                class="readonly-input"
+              />
+            </div>
+            <div class="gen-hint" id="gen-size-hint" data-i18n="gen-valid">
+              ✓ 参数有效
+            </div>
+          </div>
+          <div class="gen-action">
+            <button
+              class="btn-primary gen-btn-large"
+              id="btn-generate"
+              data-i18n="gen-btn"
+            >
+              ✨ 生成机构F
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="grid-2col">
+          <div class="col-item">
+            <div class="section-label" data-i18n="gen-centroid">
+              体心坐标 (步进±0.5)
+            </div>
+            <div class="control-row">
+              <span>X</span><button class="step-btn" id="gx-dec">-0.5</button>
+              <input
+                type="number"
+                id="gen-x"
+                value="0"
+                step="0.1"
+                min="-25"
+                max="25"
+                class="no-spinner"
+              />
+              <button class="step-btn" id="gx-inc">+0.5</button>
+            </div>
+            <div class="control-row">
+              <span>Y</span><button class="step-btn" id="gy-dec">-0.5</button>
+              <input
+                type="number"
+                id="gen-y"
+                value="0"
+                step="0.1"
+                min="-25"
+                max="25"
+                class="no-spinner"
+              />
+              <button class="step-btn" id="gy-inc">+0.5</button>
+            </div>
+            <div class="control-row">
+              <span>Z</span><button class="step-btn" id="gz-dec">-0.5</button>
+              <input
+                type="number"
+                id="gen-z"
+                value="0"
+                step="0.1"
+                min="-25"
+                max="25"
+                class="no-spinner"
+              />
+              <button class="step-btn" id="gz-inc">+0.5</button>
+            </div>
+          </div>
+          <div class="col-item">
+            <div class="section-label" data-i18n="gen-world-rot">
+              绕世界旋转 (步进±90°)
+            </div>
+            <div class="control-row">
+              <span>X</span><button class="step-btn" id="grx-dec">-90°</button>
+              <input
+                type="number"
+                id="gen-rx"
+                value="0"
+                step="1"
+                min="-360"
+                max="360"
+              />
+              <button class="step-btn" id="grx-inc">+90°</button>
+            </div>
+            <div class="control-row">
+              <span>Y</span><button class="step-btn" id="gry-dec">-90°</button>
+              <input
+                type="number"
+                id="gen-ry"
+                value="0"
+                step="1"
+                min="-360"
+                max="360"
+              />
+              <button class="step-btn" id="gry-inc">+90°</button>
+            </div>
+            <div class="control-row">
+              <span>Z</span><button class="step-btn" id="grz-dec">-90°</button>
+              <input
+                type="number"
+                id="gen-rz"
+                value="0"
+                step="1"
+                min="-360"
+                max="360"
+              />
+              <button class="step-btn" id="grz-inc">+90°</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-label" data-i18n="gen-init-angle">
+          L零件初始角度 (步进±90°)
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px">
+          <div
+            style="
+              background: var(--blue-bg);
+              border-radius: 6px;
+              padding: 6px 8px;
+              border: 1px solid var(--blue);
+            "
+          >
+            <div
+              style="
+                font-weight: 700;
+                font-size: 13px;
+                color: var(--blue);
+                margin-bottom: 4px;
+              "
+              data-i18n="gen-l1"
+            >
+              L1 (蓝)
+            </div>
+            <div class="control-row">
+              <span data-i18n="angle-label">角度</span>
+              <button class="step-btn" id="ga1-dec">-90°</button>
+              <input
+                type="number"
+                id="gen-a1"
+                value="0"
+                step="1"
+                min="-360"
+                max="360"
+              />
+              <button class="step-btn" id="ga1-inc">+90°</button>
+            </div>
+          </div>
+          <div
+            style="
+              background: var(--red-bg);
+              border-radius: 6px;
+              padding: 6px 8px;
+              border: 1px solid var(--red);
+            "
+          >
+            <div
+              style="
+                font-weight: 700;
+                font-size: 13px;
+                color: var(--red);
+                margin-bottom: 4px;
+              "
+              data-i18n="gen-l2"
+            >
+              L2 (红)
+            </div>
+            <div class="control-row">
+              <span data-i18n="angle-label">角度</span>
+              <button class="step-btn" id="ga2-dec">-90°</button>
+              <input
+                type="number"
+                id="gen-a2"
+                value="0"
+                step="1"
+                min="-360"
+                max="360"
+              />
+              <button class="step-btn" id="ga2-inc">+90°</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="panel hidden ui-control" id="op-panel">
+      <div class="section">
+        <div class="section-label" data-i18n="op-sel">📌 当前选择</div>
+        <div class="info-row">
+          <span class="info-label" data-i18n="op-sel-plane">选中平面</span>
+          <span class="info-value" id="sel-plane">无</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label" data-i18n="op-mech-id">机构编号</span>
+          <span class="info-value" id="sel-mech-id">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label" data-i18n="op-pos">空间坐标</span>
+          <span class="info-value" id="sel-pos">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label" data-i18n="op-normal-start">法向量起点</span>
+          <span class="info-value" id="sel-normal-start">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label" data-i18n="op-normal-dir">法向量方向</span>
+          <span class="info-value" id="sel-normal-dir">-</span>
+        </div>
+        <div class="info-row">
+          <span class="info-label" data-i18n="op-plane-center">平面中心</span>
+          <span class="info-value" id="sel-plane-center">-</span>
+        </div>
+        <div class="merged-row" style="margin-top: 4px">
+          <label data-i18n="op-rename">编号</label>
+          <input
+            type="number"
+            id="rename-id"
+            value=""
+            min="1"
+            step="1"
+            style="width: 54px"
+            disabled
+          />
+          <button
+            class="step-btn"
+            id="btn-rename"
+            disabled
+            data-i18n="op-rename-btn"
+          >
+            修改
+          </button>
+          <button
+            class="btn-danger"
+            id="btn-delete"
+            disabled
+            style="flex: 1; padding: 5px 0; font-size: 12px"
+            data-i18n="op-delete"
+          >
+            🗑️ 删除
+          </button>
+          <button
+            class="btn-danger"
+            id="btn-clear-all"
+            style="flex: 1; padding: 5px 0; font-size: 12px"
+            data-i18n="op-clear-all"
+          >
+            🧹 清除所有
+          </button>
+        </div>
+      </div>
+      <div class="section">
+        <div class="grid-2col">
+          <div class="col-item">
+            <div class="section-label" data-i18n="op-trans">
+              整体平移 (步进±0.5)
+            </div>
+            <div class="control-row">
+              <span>X</span><button class="step-btn" id="tx-dec">-0.5</button>
+              <input
+                type="number"
+                id="pos-x"
+                value="0"
+                step="0.1"
+                min="-10"
+                max="10"
+                disabled
+                class="no-spinner"
+              />
+              <button class="step-btn" id="tx-inc">+0.5</button>
+            </div>
+            <div class="control-row">
+              <span>Y</span><button class="step-btn" id="ty-dec">-0.5</button>
+              <input
+                type="number"
+                id="pos-y"
+                value="0"
+                step="0.1"
+                min="-10"
+                max="10"
+                disabled
+                class="no-spinner"
+              />
+              <button class="step-btn" id="ty-inc">+0.5</button>
+            </div>
+            <div class="control-row">
+              <span>Z</span><button class="step-btn" id="tz-dec">-0.5</button>
+              <input
+                type="number"
+                id="pos-z"
+                value="0"
+                step="0.1"
+                min="-10"
+                max="10"
+                disabled
+                class="no-spinner"
+              />
+              <button class="step-btn" id="tz-inc">+0.5</button>
+            </div>
+          </div>
+          <div class="col-item">
+            <div class="section-label" data-i18n="op-world-rot">
+              绕世界轴旋转 (步进±90°)
+            </div>
+            <div class="control-row">
+              <span>X</span><button class="step-btn" id="rx-dec">-90°</button>
+              <input
+                type="number"
+                id="rot-x"
+                value="0"
+                step="1"
+                min="-360"
+                max="360"
+                disabled
+              />
+              <button class="step-btn" id="rx-inc">+90°</button>
+            </div>
+            <div class="control-row">
+              <span>Y</span><button class="step-btn" id="ry-dec">-90°</button>
+              <input
+                type="number"
+                id="rot-y"
+                value="0"
+                step="1"
+                min="-360"
+                max="360"
+                disabled
+              />
+              <button class="step-btn" id="ry-inc">+90°</button>
+            </div>
+            <div class="control-row">
+              <span>Z</span><button class="step-btn" id="rz-dec">-90°</button>
+              <input
+                type="number"
+                id="rot-z"
+                value="0"
+                step="1"
+                min="-360"
+                max="360"
+                disabled
+              />
+              <button class="step-btn" id="rz-inc">+90°</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-label" data-i18n="op-l-rot">
+          L1/L2 绕轴旋转 (步进±90°)
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px">
+          <div
+            style="
+              background: var(--blue-bg);
+              border-radius: 6px;
+              padding: 6px 8px;
+              border: 1px solid var(--blue);
+            "
+          >
+            <div
+              style="
+                font-weight: 700;
+                font-size: 13px;
+                color: var(--blue);
+                margin-bottom: 4px;
+              "
+              data-i18n="op-l1"
+            >
+              L1 (蓝)
+            </div>
+            <div class="control-row">
+              <span data-i18n="angle-label">角度</span>
+              <button class="step-btn" id="l1-dec">-90°</button>
+              <input
+                type="number"
+                id="l1-angle"
+                value="0"
+                step="1"
+                min="-360"
+                max="360"
+                disabled
+              />
+              <button class="step-btn" id="l1-inc">+90°</button>
+            </div>
+          </div>
+          <div
+            style="
+              background: var(--red-bg);
+              border-radius: 6px;
+              padding: 6px 8px;
+              border: 1px solid var(--red);
+            "
+          >
+            <div
+              style="
+                font-weight: 700;
+                font-size: 13px;
+                color: var(--red);
+                margin-bottom: 4px;
+              "
+              data-i18n="op-l2"
+            >
+              L2 (红)
+            </div>
+            <div class="control-row">
+              <span data-i18n="angle-label">角度</span>
+              <button class="step-btn" id="l2-dec">-90°</button>
+              <input
+                type="number"
+                id="l2-angle"
+                value="0"
+                step="1"
+                min="-360"
+                max="360"
+                disabled
+              />
+              <button class="step-btn" id="l2-inc">+90°</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="panel hidden ui-control" id="conn-panel">
+      <div class="section">
+        <!-- 第一行：平面 A / B（压缩）+ 多选模式 -->
+        <div class="conn-row-top">
+          <div class="conn-info-box">
+            <div class="label" data-i18n="conn-plane-a">
+              平面 A <span style="font-size: 10px; color: #00ccff">(青色)</span>
+            </div>
+            <div class="data" id="conn-a-info" data-i18n="conn-none">
+              未选择
+            </div>
+          </div>
+          <div class="conn-info-box">
+            <div class="label" data-i18n="conn-plane-b">
+              平面 B <span style="font-size: 10px; color: #aa44ff">(紫色)</span>
+            </div>
+            <div class="data" id="conn-b-info" data-i18n="conn-none">
+              未选择
+            </div>
+          </div>
+          <div class="mode-toggle-row">
+            <span class="mode-label" id="mode-label" data-i18n="conn-multi-mode"
+              >多选</span
+            >
+            <span class="mode-label" id="mode-status-badge"
+              ><span
+                class="status-badge off"
+                id="mode-status-badge-text"
+                data-i18n="conn-multi-off"
+                >关闭</span
+              ></span
+            >
+            <label class="switch" id="multi-switch">
+              <input type="checkbox" id="multi-checkbox" />
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+
+        <!-- 第二行：连接 / 清除 / 重新排序（压缩） -->
+        <div class="conn-row-actions">
+          <button
+            class="btn-primary"
+            id="btn-connect"
+            disabled
+            data-i18n="conn-connect"
+          >
+            🔗 连接
+          </button>
+          <button class="step-btn" id="btn-conn-clear" data-i18n="conn-clear">
+            ✖ 清除
+          </button>
+          <button class="step-btn" id="btn-renumber" data-i18n="conn-renumber">
+            🔢 重新排序
+          </button>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-label" data-i18n="conn-list-title">已连接列表</div>
+        <div id="conn-list" class="conn-grid"></div>
+      </div>
+      <div class="section">
+        <div class="section-label" data-i18n="conn-matrix-title">连接矩阵</div>
+        <div id="conn-matrix-container">
+          <div class="matrix-toolbar">
+            <div class="matrix-mode-tabs">
+              <button
+                class="matrix-mode-btn active"
+                data-mode="full"
+                data-i18n="conn-matrix-full"
+              >
+                全部模块
+              </button>
+              <button
+                class="matrix-mode-btn"
+                data-mode="subset"
+                data-i18n="conn-matrix-subset"
+              >
+                直接连接子集
+              </button>
+            </div>
+            <div style="display: flex; gap: 6px">
+              <button
+                class="step-btn"
+                id="matrix-zoom-btn"
+                data-i18n="conn-matrix-zoom"
+              >
+                🔍 放大
+              </button>
+              <button
+                class="step-btn"
+                id="matrix-save-btn"
+                data-i18n="conn-matrix-save"
+              >
+                💾 保存
+              </button>
+            </div>
+          </div>
+          <canvas id="connection-matrix-canvas"></canvas>
+          <div class="matrix-legend">
+            <span
+              ><span class="matrix-legend-cell normal"></span
+              ><span data-i18n="conn-matrix-legend-normal">连接</span></span
+            >
+            <span
+              ><span class="matrix-legend-cell diag"></span
+              ><span data-i18n="conn-matrix-legend-diag">自环/尺寸</span></span
+            >
+            <span
+              ><span class="matrix-legend-cell base"></span
+              ><span data-i18n="conn-matrix-legend-base">基准平面</span></span
+            >
+            <span
+              ><span class="matrix-legend-cell highlight"></span
+              ><span data-i18n="conn-matrix-legend-highlight"
+                >当前选中</span
+              ></span
+            >
+          </div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-label" data-i18n="topology-title">连接拓扑图</div>
+        <div id="topology-container">
+          <div class="topology-header">
+            <div class="topology-title">
+              <span data-i18n="topology-sub">机构节点 · 连接边</span>
+            </div>
+            <div class="topo-toolbar">
+              <div class="topo-toggle">
+                <span data-i18n="topo-draw-toggle">绘制</span>
+                <label class="switch" id="topo-draw-switch">
+                  <input type="checkbox" id="topo-draw-checkbox" checked />
+                  <span class="slider"></span>
+                </label>
+              </div>
+              <button
+                class="step-btn"
+                id="topo-refresh-btn"
+                data-i18n="topo-refresh"
+              >
+                🔄 刷新
+              </button>
+              <button class="step-btn" id="topo-zoom-btn" data-i18n="topo-zoom">
+                🔍 放大
+              </button>
+              <button class="step-btn" id="topo-save-btn" data-i18n="topo-save">
+                💾 保存
+              </button>
+            </div>
+          </div>
+          <canvas id="topology-canvas"></canvas>
+          <div class="topology-legend">
+            <span
+              ><span class="legend-dot normal"></span>
+              <span data-i18n="topology-legend-normal">普通机构</span></span
+            >
+            <span
+              ><span class="legend-dot cycle"></span>
+              <span data-i18n="topology-legend-cycle">环上机构</span></span
+            >
+            <span
+              ><span class="legend-dot highlight"></span>
+              <span data-i18n="topology-legend-highlight">当前选中</span></span
+            >
+            <span
+              ><span class="legend-line normal"></span>
+              <span data-i18n="topology-legend-edge">连接</span></span
+            >
+            <span
+              ><span class="legend-line cycle"></span>
+              <span data-i18n="topology-legend-cycle-edge">环上连接</span></span
+            >
+            <span
+              ><span class="legend-line highlight"></span>
+              <span data-i18n="topology-legend-highlight-edge"
+                >选中连接</span
+              ></span
+            >
+            <span
+              ><span class="legend-line cycle-highlight"></span>
+              <span data-i18n="topology-legend-cycle-highlight-edge"
+                >选中的环边</span
+              ></span
+            >
+          </div>
+        </div>
+      </div>
+      <div class="section">
+        <div class="section-label" data-i18n="conn-chain">🔦 高亮连接链</div>
+        <div class="chain-label l1" data-i18n="conn-chain-l1">● L1 连接链</div>
+        <div id="chain-info-l1" data-i18n="conn-chain-click">点击平面查看</div>
+        <div class="chain-label l2" data-i18n="conn-chain-l2">● L2 连接链</div>
+        <div id="chain-info-l2" data-i18n="conn-chain-click">点击平面查看</div>
+      </div>
+    </div>
+    <div id="topo-modal">
+      <div class="modal-box">
+        <div class="modal-header">
+          <div class="modal-title" data-i18n="topo-modal-title">
+            🔍 拓扑图放大
+          </div>
+          <div class="modal-actions">
+            <button
+              class="step-btn save-btn"
+              id="topo-modal-save-btn"
+              data-i18n="topo-modal-save"
+            >
+              💾 保存图片
+            </button>
+            <button
+              class="step-btn"
+              id="topo-modal-close-btn"
+              data-i18n="topo-modal-close"
+            >
+              ✕ 关闭
+            </button>
+          </div>
+        </div>
+        <div class="modal-body"><canvas id="topo-modal-canvas"></canvas></div>
+      </div>
+    </div>
+    <!-- 连接矩阵放大模态框 -->
+    <div id="matrix-modal">
+      <div class="modal-box">
+        <div class="modal-header">
+          <div class="modal-title" data-i18n="conn-matrix-modal-title">
+            🔍 连接矩阵放大
+          </div>
+          <div class="modal-actions">
+            <button
+              class="step-btn save-btn"
+              id="matrix-modal-save-btn"
+              data-i18n="conn-matrix-modal-save"
+            >
+              💾 保存图片
+            </button>
+            <button
+              class="step-btn"
+              id="matrix-modal-close-btn"
+              data-i18n="conn-matrix-modal-close"
+            >
+              ✕ 关闭
+            </button>
+          </div>
+        </div>
+        <div class="modal-body"><canvas id="matrix-modal-canvas"></canvas></div>
+      </div>
+    </div>
+
+    <!-- 模块加载 -->
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+          "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+        }
+      }
+    </script>
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>
