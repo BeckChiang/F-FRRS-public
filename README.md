@@ -101,6 +101,8 @@ F-FRRS/
     └── main.js
 ```
 
+`Sample_Mechanisms/`（示例机构 JSON，可选）可与平台放在同一目录下，通过界面的导入功能加载。
+
 ### English
 
 **Requirements**:
@@ -136,6 +138,9 @@ F-FRRS/
 ├── vendor/                             # Three.js v0.160.0 本地化依赖 / Vendored Three.js
 │   ├── three.module.js                 # 核心库 / Core library
 │   └── OrbitControls.js                # 相机控制器 / Camera controls
+├── Sample_Mechanisms/                  # 示例机构 / Sample mechanism JSON files
+│   ├── robot_state_*.json              # 各示例机构 / Individual mechanisms
+│   └── robotic_arm_sequence/           # 机械臂 19 步装配序列 / Robotic-arm assembly sequence
 └── src/
     ├── main.js                         # 入口 / Entry point
     ├── core/                           # 核心数据模型 / Core data models
@@ -159,6 +164,12 @@ F-FRRS/
         ├── Renumber.js                 # 重新编号算法 / Renumbering algorithm
         └── i18n.js                     # 国际化 / i18n
 ```
+
+### 3.1 加载示例机构 / Loading Sample Mechanisms
+
+**中文**：`Sample_Mechanisms/` 目录包含论文中用到的示例机构（全英文文件名）。启动平台后，通过"生成"面板的导入按钮（或快捷键 `Ctrl+O`）选择任一 `robot_state_*.json` 即可加载。机械臂装配序列（`robotic_arm_sequence/`，`Robotic_arm_0.json` 至 `Robotic_arm_end.json`）请按编号顺序依次导入。
+
+**English**: `Sample_Mechanisms/` contains the mechanism examples used in the paper (English file names). After starting the platform, load any `robot_state_*.json` via the import button in the "Generate" panel (or `Ctrl+O`). For the robotic-arm assembly sequence (`robotic_arm_sequence/`, `Robotic_arm_0.json` … `Robotic_arm_end.json`), import the files in numbered order.
 
 ---
 
@@ -1497,5 +1508,5 @@ Permission is hereby granted, free of charge, to any person obtaining a copy ...
 
 ---
 
-**文档版本 / Doc Version**: 1.1  
+**文档版本 / Doc Version**: 1.2  
 **最后更新 / Last Updated**: 2026-10-17
