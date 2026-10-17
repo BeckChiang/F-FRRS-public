@@ -1454,28 +1454,38 @@ appState._saveState();
 
 **English**: Screenshots use an **offscreen renderer**; resolution is set by `screenshot-res`. If blurry, choose higher resolution (4K / 8K).
 
-### Q6：连接面板第一个方框怎么变成了两行？
+### Q6：连接面板第一个方框怎么变成了两行？/ Why did the first box in the Connections panel become two rows?
 
-按最新布局：第一行显示平面 A / B（压缩）和多选模式开关；第二行显示连接 / 清除 / 重新排序三个按钮。
+**中文**：按最新布局：第一行显示平面 A / B（压缩）和多选模式开关；第二行显示连接 / 清除 / 重新排序三个按钮。
 
-### Q7：如何导出带有排序的机构？
+**English**: In the latest layout: the first row shows planes A / B (compressed) and the multi-select toggle; the second row shows the Connect / Clear / Renumber buttons.
 
-切换到"生成"面板 → 点击"📊 排序并导出"。会自动重排序、生成连接矩阵并弹出保存对话框。
+### Q7：如何导出带有排序的机构？/ How to export with mechanisms sorted?
 
-### Q8：连接矩阵显示异常怎么办？
+**中文**：切换到"生成"面板 → 点击"📊 排序并导出"。会自动重排序、生成连接矩阵并弹出保存对话框。
 
-检查 `src/renderer/ConnectionMatrixRenderer.js` 的 `_draw` 方法。若画布尺寸为 0，尝试在 `refresh()` 中增加 `setTimeout` 兜底重绘。
+**English**: Switch to the "Generate" panel → click "📊 Sort & Export". It renumbers automatically, generates the connection matrix, and opens the save dialog.
 
-### Q9：为什么切换中英文后控件会换行？
+### Q8：连接矩阵显示异常怎么办？/ What if the connection matrix renders abnormally?
 
-`UIBinder._updateAllTexts()` 会重新填充所有 `[data-i18n]` 元素的 `textContent`。若出现换行，需检查 CSS 中相关控件的 `white-space` 和 `flex-wrap` 设置。
+**中文**：检查 `src/renderer/ConnectionMatrixRenderer.js` 的 `_draw` 方法。若画布尺寸为 0，尝试在 `refresh()` 中增加 `setTimeout` 兜底重绘。
 
-### Q10：如何修改轴径自动运算公式？
+**English**: Check the `_draw` method in `src/renderer/ConnectionMatrixRenderer.js`. If the canvas size is 0, add a `setTimeout` fallback redraw in `refresh()`.
 
-修改以下两处保持一致：
+### Q9：为什么切换中英文后控件会换行？/ Why do controls wrap after switching language?
 
-1. `src/ui/UIBinder.js` → `_updateGenDisplay()` 中的 `const axisDiam = cubeSize / 4;`
-2. `src/core/Mechanism.js` → `fromSimplifiedJSON()` 中的 `const axisRadius = cubeSize / 8;`
+**中文**：`UIBinder._updateAllTexts()` 会重新填充所有 `[data-i18n]` 元素的 `textContent`。若出现换行，需检查 CSS 中相关控件的 `white-space` 和 `flex-wrap` 设置。
+
+**English**: `UIBinder._updateAllTexts()` refills the `textContent` of all `[data-i18n]` elements. If wrapping occurs, check the `white-space` and `flex-wrap` CSS settings of the affected controls.
+
+### Q10：如何修改轴径自动运算公式？/ How to change the automatic axis-radius formula?
+
+**中文**：修改以下两处保持一致：
+
+**English**: Update both of the following consistently:
+
+1. `src/ui/UIBinder.js` → `_updateGenDisplay()` 中的 / in `const axisDiam = cubeSize / 4;`
+2. `src/core/Mechanism.js` → `fromSimplifiedJSON()` 中的 / in `const axisRadius = cubeSize / 8;`
 
 ---
 
