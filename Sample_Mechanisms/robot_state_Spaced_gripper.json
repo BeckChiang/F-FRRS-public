@@ -1,0 +1,236 @@
+{
+  "mechanisms": [
+    {
+      "id": 1,
+      "position": [
+        1.5,
+        0,
+        0.5
+      ],
+      "worldRotation": [
+        89.99999999999999,
+        0,
+        -89.99999999999999
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 0.75,
+      "thickness": 0.125,
+      "cubeSize": 1,
+      "axisRadius": 0.125
+    },
+    {
+      "id": 2,
+      "position": [
+        1,
+        1.5,
+        1
+      ],
+      "worldRotation": [
+        -89.99999999999999,
+        -90,
+        0
+      ],
+      "l1Angle": -75,
+      "l2Angle": 0,
+      "armSize": 1.75,
+      "thickness": 0.125,
+      "cubeSize": 2,
+      "axisRadius": 0.25
+    },
+    {
+      "id": 3,
+      "position": [
+        1.5,
+        0,
+        1.5
+      ],
+      "worldRotation": [
+        89.99999999999999,
+        0,
+        89.99999999999999
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 0.75,
+      "thickness": 0.125,
+      "cubeSize": 1,
+      "axisRadius": 0.125
+    },
+    {
+      "id": 4,
+      "position": [
+        0.5,
+        0,
+        1.5
+      ],
+      "worldRotation": [
+        89.99999999999999,
+        0,
+        89.99999999999999
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 0.75,
+      "thickness": 0.125,
+      "cubeSize": 1,
+      "axisRadius": 0.125
+    },
+    {
+      "id": 5,
+      "position": [
+        0.5,
+        0,
+        0.5
+      ],
+      "worldRotation": [
+        89.99999999999999,
+        0,
+        -89.99999999999999
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 0.75,
+      "thickness": 0.125,
+      "cubeSize": 1,
+      "axisRadius": 0.125
+    },
+    {
+      "id": 6,
+      "position": [
+        1,
+        -1.5,
+        1
+      ],
+      "worldRotation": [
+        89.99999999999999,
+        -90,
+        0
+      ],
+      "l1Angle": 75,
+      "l2Angle": 0,
+      "armSize": 1.75,
+      "thickness": 0.125,
+      "cubeSize": 2,
+      "axisRadius": 0.25
+    },
+    {
+      "id": 7,
+      "position": [
+        1,
+        2.02,
+        2.93
+      ],
+      "worldRotation": [
+        -14.999999999999998,
+        89.99999914622636,
+        0
+      ],
+      "l1Angle": 0,
+      "l2Angle": 30,
+      "armSize": 1.75,
+      "thickness": 0.125,
+      "cubeSize": 2,
+      "axisRadius": 0.25
+    },
+    {
+      "id": 8,
+      "position": [
+        1,
+        -2.02,
+        2.93
+      ],
+      "worldRotation": [
+        14.999999999999998,
+        89.99999914622636,
+        0
+      ],
+      "l1Angle": 0,
+      "l2Angle": -30,
+      "armSize": 1.75,
+      "thickness": 0.125,
+      "cubeSize": 2,
+      "axisRadius": 0.25
+    }
+  ],
+  "connections": [
+    {
+      "id": 1,
+      "planeA": {
+        "mechanismId": 1,
+        "planeIndex": 4
+      },
+      "planeB": {
+        "mechanismId": 3,
+        "planeIndex": 4
+      }
+    },
+    {
+      "id": 2,
+      "planeA": {
+        "mechanismId": 5,
+        "planeIndex": 4
+      },
+      "planeB": {
+        "mechanismId": 4,
+        "planeIndex": 4
+      }
+    },
+    {
+      "id": 5,
+      "planeA": {
+        "mechanismId": 4,
+        "planeIndex": 1
+      },
+      "planeB": {
+        "mechanismId": 2,
+        "planeIndex": 4
+      }
+    },
+    {
+      "id": 6,
+      "planeA": {
+        "mechanismId": 3,
+        "planeIndex": 1
+      },
+      "planeB": {
+        "mechanismId": 2,
+        "planeIndex": 4
+      }
+    },
+    {
+      "id": 7,
+      "planeA": {
+        "mechanismId": 6,
+        "planeIndex": 4
+      },
+      "planeB": {
+        "mechanismId": 4,
+        "planeIndex": 3
+      }
+    },
+    {
+      "id": 9,
+      "planeA": {
+        "mechanismId": 7,
+        "planeIndex": 2
+      },
+      "planeB": {
+        "mechanismId": 2,
+        "planeIndex": 2
+      }
+    },
+    {
+      "id": 10,
+      "planeA": {
+        "mechanismId": 8,
+        "planeIndex": 2
+      },
+      "planeB": {
+        "mechanismId": 6,
+        "planeIndex": 2
+      }
+    }
+  ],
+  "nextConnId": 11
+}

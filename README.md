@@ -66,20 +66,24 @@
 
 **依赖**：
 
-- Python 3（仅用于本地 HTTP 服务）
+- Python 3（仅用于本地 HTTP 服务；也可用 `npx serve` 等任意静态服务器替代）
 - 现代浏览器（Chrome 86+ / Edge 86+ / Firefox 90+）
-- 网络访问 `unpkg.com`（首次加载 Three.js）
+- **无需外网**：Three.js v0.160.0 已内置于 `vendor/` 目录，完全离线可用
 
 **运行**：
 
 ```bash
-# Windows
-双击 start.bat
+# Windows：双击 start.bat
 
-# 或手动
+# 或手动（跨平台）
 python -m http.server 8080
 # 然后浏览器访问 http://localhost:8080
+
+# Node.js 环境也可用
+npx serve .
 ```
+
+> 注意：平台使用 ES Modules，浏览器仅允许通过 HTTP(S) 加载，直接双击 `index.html`（file:// 协议）无法运行。
 
 **目录要求**：
 
@@ -88,6 +92,7 @@ F-FRRS/
 ├── index.html
 ├── start.bat
 ├── readme.txt
+├── vendor/                  # Three.js v0.160.0（本地化，离线可用）
 └── src/
     ├── core/
     ├── renderer/
@@ -100,20 +105,24 @@ F-FRRS/
 
 **Requirements**:
 
-- Python 3 (only for local HTTP server)
+- Python 3 (only for the local HTTP server; any static file server such as `npx serve` works too)
 - Modern browser (Chrome 86+ / Edge 86+ / Firefox 90+)
-- Network access to `unpkg.com` (first load of Three.js)
+- **No internet required**: Three.js v0.160.0 is bundled in `vendor/` and runs fully offline
 
 **Run**:
 
 ```bash
-# Windows
-Double-click start.bat
+# Windows: double-click start.bat
 
-# Or manually
+# Or manually (cross-platform)
 python -m http.server 8080
-# Then open http://localhost:8080 in browser
+# Then open http://localhost:8080 in a browser
+
+# With Node.js:
+npx serve .
 ```
+
+> Note: the platform uses ES Modules, which browsers only load over HTTP(S); opening `index.html` directly via `file://` will not work.
 
 ---
 
@@ -124,6 +133,9 @@ F-FRRS/
 ├── index.html                          # 主页面 / Main page (HTML + CSS + importmap)
 ├── start.bat                           # Windows 启动脚本 / Windows launcher
 ├── readme.txt                          # 简要说明 / Brief readme
+├── vendor/                             # Three.js v0.160.0 本地化依赖 / Vendored Three.js
+│   ├── three.module.js                 # 核心库 / Core library
+│   └── OrbitControls.js                # 相机控制器 / Camera controls
 └── src/
     ├── main.js                         # 入口 / Entry point
     ├── core/                           # 核心数据模型 / Core data models
@@ -1456,13 +1468,34 @@ appState._saveState();
 
 ---
 
-## 版权与许可 / Copyright & License
+## 如何引用 / How to Cite
 
-**中文**：本项目为个人研究与教学使用，未指定开源许可证。如需商用，请联系作者。
+**中文**：若本平台用于学术研究，请引用以下论文（录用后补全卷期页码）：
 
-**English**: This project is for personal research and teaching purposes. No open-source license specified. For commercial use, please contact the author.
+> [Authors], "[Paper Title]," *IEEE Transactions on Robotics*, 2026.（待录用 / to appear）
+
+**English**: If you use this platform in academic research, please cite:
+
+> [Authors], "[Paper Title]," *IEEE Transactions on Robotics*, 2026. (to appear)
 
 ---
 
-**文档版本 / Doc Version**: 1.0  
-**最后更新 / Last Updated**: 2026-09-20
+## 版权与许可 / Copyright & License
+
+**中文**：本项目默认保留所有权利（Copyright (c) 2026, [作者/机构]）。
+
+> **投稿/公开发布提示**：若随论文公开本仓库，强烈建议指定明确的开源许可证（推荐 **MIT** 或 **BSD-3-Clause**）。未指定许可证时，法律默认"保留所有权利"，他人（包括审稿人复现后的再使用）无权复用、修改或分发代码。将下方占位符替换为实际许可文本即可。
+
+**English**: All rights reserved by default (Copyright (c) 2026, [Author/Affiliation]).
+
+> **Note for public release**: if this repository is made public alongside a paper, an explicit open-source license is strongly recommended (**MIT** or **BSD-3-Clause**). Without a license, "all rights reserved" applies by default and others (including reviewers reusing the code after reproduction) have no legal right to reuse, modify, or redistribute it. Replace the placeholder below with the actual license text.
+
+```
+[License text, e.g., MIT: Copyright (c) 2026 [Author/Affiliation]
+Permission is hereby granted, free of charge, to any person obtaining a copy ...]
+```
+
+---
+
+**文档版本 / Doc Version**: 1.1  
+**最后更新 / Last Updated**: 2026-10-17

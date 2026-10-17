@@ -1,0 +1,416 @@
+{
+  "mechanisms": [
+    {
+      "id": 1,
+      "position": [
+        0,
+        -2,
+        5
+      ],
+      "worldRotation": [
+        90,
+        -90,
+        0
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 3.75,
+      "thickness": 0.125,
+      "cubeSize": 4,
+      "axisRadius": 0.5
+    },
+    {
+      "id": 2,
+      "position": [
+        8.881784197001252e-16,
+        1.9999996380018978,
+        5.001203325507805
+      ],
+      "worldRotation": [
+        -89.9655272614313,
+        -89.99999914622636,
+        0
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 3.75,
+      "thickness": 0.125,
+      "cubeSize": 4,
+      "axisRadius": 0.5
+    },
+    {
+      "id": 3,
+      "position": [
+        3,
+        3.0000000000000004,
+        4
+      ],
+      "worldRotation": [
+        0,
+        0,
+        0
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 1.75,
+      "thickness": 0.125,
+      "cubeSize": 2,
+      "axisRadius": 0.25
+    },
+    {
+      "id": 4,
+      "position": [
+        3,
+        -2.9999999999999996,
+        4
+      ],
+      "worldRotation": [
+        0,
+        0,
+        0
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 1.75,
+      "thickness": 0.125,
+      "cubeSize": 2,
+      "axisRadius": 0.25
+    },
+    {
+      "id": 5,
+      "position": [
+        -3,
+        -2.9999999999999996,
+        4
+      ],
+      "worldRotation": [
+        0,
+        0,
+        179.99999999999997
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 1.75,
+      "thickness": 0.125,
+      "cubeSize": 2,
+      "axisRadius": 0.25
+    },
+    {
+      "id": 6,
+      "position": [
+        -3,
+        3.0000000000000004,
+        4
+      ],
+      "worldRotation": [
+        0,
+        0,
+        179.99999999999997
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 1.75,
+      "thickness": 0.125,
+      "cubeSize": 2,
+      "axisRadius": 0.25
+    },
+    {
+      "id": 7,
+      "position": [
+        3,
+        3.0000000000000004,
+        2
+      ],
+      "worldRotation": [
+        0,
+        90,
+        0
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 1.75,
+      "thickness": 0.125,
+      "cubeSize": 2,
+      "axisRadius": 0.25
+    },
+    {
+      "id": 8,
+      "position": [
+        3,
+        3.0000000000000004,
+        0
+      ],
+      "worldRotation": [
+        179.99999999999997,
+        89.99999852122066,
+        0
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 1.75,
+      "thickness": 0.125,
+      "cubeSize": 2,
+      "axisRadius": 0.25
+    },
+    {
+      "id": 9,
+      "position": [
+        2.9999999999999996,
+        -5.000000000000002,
+        1.9999999999999996
+      ],
+      "worldRotation": [
+        89.99999999999997,
+        89.9999982924527,
+        0
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 1.75,
+      "thickness": 0.125,
+      "cubeSize": 2,
+      "axisRadius": 0.25
+    },
+    {
+      "id": 10,
+      "position": [
+        3.0000000000000004,
+        -3,
+        2
+      ],
+      "worldRotation": [
+        0,
+        90,
+        0
+      ],
+      "l1Angle": -90,
+      "l2Angle": 0,
+      "armSize": 1.75,
+      "thickness": 0.125,
+      "cubeSize": 2,
+      "axisRadius": 0.25
+    },
+    {
+      "id": 11,
+      "position": [
+        -3,
+        -2.9999999999999996,
+        2
+      ],
+      "worldRotation": [
+        180,
+        -89.99999879258174,
+        0
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 1.75,
+      "thickness": 0.125,
+      "cubeSize": 2,
+      "axisRadius": 0.25
+    },
+    {
+      "id": 12,
+      "position": [
+        -3,
+        3.0000000000000004,
+        2
+      ],
+      "worldRotation": [
+        180,
+        -89.99999879258174,
+        0
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 1.75,
+      "thickness": 0.125,
+      "cubeSize": 2,
+      "axisRadius": 0.25
+    },
+    {
+      "id": 13,
+      "position": [
+        -3,
+        3.0000000000000004,
+        0
+      ],
+      "worldRotation": [
+        -4.9477819230344395e-14,
+        -90,
+        0
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 1.75,
+      "thickness": 0.125,
+      "cubeSize": 2,
+      "axisRadius": 0.25
+    },
+    {
+      "id": 14,
+      "position": [
+        -3,
+        -2.9999999999999996,
+        0
+      ],
+      "worldRotation": [
+        0,
+        -90,
+        0
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 1.75,
+      "thickness": 0.125,
+      "cubeSize": 2,
+      "axisRadius": 0.25
+    }
+  ],
+  "connections": [
+    {
+      "id": 1,
+      "planeA": {
+        "mechanismId": 1,
+        "planeIndex": 4
+      },
+      "planeB": {
+        "mechanismId": 2,
+        "planeIndex": 4
+      }
+    },
+    {
+      "id": 2,
+      "planeA": {
+        "mechanismId": 3,
+        "planeIndex": 1
+      },
+      "planeB": {
+        "mechanismId": 7,
+        "planeIndex": 4
+      }
+    },
+    {
+      "id": 3,
+      "planeA": {
+        "mechanismId": 7,
+        "planeIndex": 2
+      },
+      "planeB": {
+        "mechanismId": 8,
+        "planeIndex": 2
+      }
+    },
+    {
+      "id": 4,
+      "planeA": {
+        "mechanismId": 4,
+        "planeIndex": 1
+      },
+      "planeB": {
+        "mechanismId": 10,
+        "planeIndex": 4
+      }
+    },
+    {
+      "id": 5,
+      "planeA": {
+        "mechanismId": 9,
+        "planeIndex": 2
+      },
+      "planeB": {
+        "mechanismId": 10,
+        "planeIndex": 2
+      }
+    },
+    {
+      "id": 6,
+      "planeA": {
+        "mechanismId": 5,
+        "planeIndex": 1
+      },
+      "planeB": {
+        "mechanismId": 11,
+        "planeIndex": 4
+      }
+    },
+    {
+      "id": 7,
+      "planeA": {
+        "mechanismId": 11,
+        "planeIndex": 2
+      },
+      "planeB": {
+        "mechanismId": 14,
+        "planeIndex": 2
+      }
+    },
+    {
+      "id": 8,
+      "planeA": {
+        "mechanismId": 6,
+        "planeIndex": 1
+      },
+      "planeB": {
+        "mechanismId": 12,
+        "planeIndex": 4
+      }
+    },
+    {
+      "id": 9,
+      "planeA": {
+        "mechanismId": 12,
+        "planeIndex": 2
+      },
+      "planeB": {
+        "mechanismId": 13,
+        "planeIndex": 2
+      }
+    },
+    {
+      "id": 10,
+      "planeA": {
+        "mechanismId": 5,
+        "planeIndex": 4
+      },
+      "planeB": {
+        "mechanismId": 1,
+        "planeIndex": 3
+      }
+    },
+    {
+      "id": 11,
+      "planeA": {
+        "mechanismId": 6,
+        "planeIndex": 4
+      },
+      "planeB": {
+        "mechanismId": 2,
+        "planeIndex": 3
+      }
+    },
+    {
+      "id": 12,
+      "planeA": {
+        "mechanismId": 4,
+        "planeIndex": 4
+      },
+      "planeB": {
+        "mechanismId": 1,
+        "planeIndex": 1
+      }
+    },
+    {
+      "id": 13,
+      "planeA": {
+        "mechanismId": 3,
+        "planeIndex": 4
+      },
+      "planeB": {
+        "mechanismId": 2,
+        "planeIndex": 1
+      }
+    }
+  ],
+  "nextConnId": 14
+}

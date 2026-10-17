@@ -1,0 +1,350 @@
+{
+  "mechanisms": [
+    {
+      "id": 1,
+      "position": [
+        -9.5,
+        -9.5,
+        0.5
+      ],
+      "worldRotation": [
+        180,
+        0,
+        0
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 0.75,
+      "thickness": 0.125,
+      "cubeSize": 1,
+      "axisRadius": 0.125
+    },
+    {
+      "id": 2,
+      "position": [
+        -6.5,
+        -11,
+        1
+      ],
+      "worldRotation": [
+        0,
+        -90,
+        0
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 1.75,
+      "thickness": 0.125,
+      "cubeSize": 2,
+      "axisRadius": 0.25
+    },
+    {
+      "id": 3,
+      "position": [
+        -4.5,
+        -11,
+        1
+      ],
+      "worldRotation": [
+        0,
+        0,
+        180
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 1.75,
+      "thickness": 0.125,
+      "cubeSize": 2,
+      "axisRadius": 0.25
+    },
+    {
+      "id": 4,
+      "position": [
+        -2.5,
+        -11,
+        1
+      ],
+      "worldRotation": [
+        0,
+        0,
+        0
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 1.75,
+      "thickness": 0.125,
+      "cubeSize": 2,
+      "axisRadius": 0.25
+    },
+    {
+      "id": 5,
+      "position": [
+        -6.5,
+        -11,
+        3
+      ],
+      "worldRotation": [
+        180,
+        -90,
+        0
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 1.75,
+      "thickness": 0.125,
+      "cubeSize": 2,
+      "axisRadius": 0.25
+    },
+    {
+      "id": 6,
+      "position": [
+        -8.5,
+        -9.5,
+        0.5
+      ],
+      "worldRotation": [
+        180,
+        0,
+        -180
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 0.75,
+      "thickness": 0.125,
+      "cubeSize": 1,
+      "axisRadius": 0.125
+    },
+    {
+      "id": 7,
+      "position": [
+        -9.5,
+        -10.5,
+        0.5
+      ],
+      "worldRotation": [
+        180,
+        0,
+        0
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 0.75,
+      "thickness": 0.125,
+      "cubeSize": 1,
+      "axisRadius": 0.125
+    },
+    {
+      "id": 8,
+      "position": [
+        -8.5,
+        -10.5,
+        0.5
+      ],
+      "worldRotation": [
+        180,
+        0,
+        -180
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 0.75,
+      "thickness": 0.125,
+      "cubeSize": 1,
+      "axisRadius": 0.125
+    },
+    {
+      "id": 9,
+      "position": [
+        -8.5,
+        -11.5,
+        0.5
+      ],
+      "worldRotation": [
+        0,
+        0,
+        0
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 0.75,
+      "thickness": 0.125,
+      "cubeSize": 1,
+      "axisRadius": 0.125
+    },
+    {
+      "id": 10,
+      "position": [
+        -9.5,
+        -11.5,
+        0.5
+      ],
+      "worldRotation": [
+        0,
+        0,
+        180
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 0.75,
+      "thickness": 0.125,
+      "cubeSize": 1,
+      "axisRadius": 0.125
+    },
+    {
+      "id": 11,
+      "position": [
+        0.5,
+        -10,
+        6
+      ],
+      "worldRotation": [
+        -180,
+        -90,
+        0
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 3.75,
+      "thickness": 0.125,
+      "cubeSize": 4,
+      "axisRadius": 0.5
+    },
+    {
+      "id": 12,
+      "position": [
+        0.5,
+        -10,
+        2
+      ],
+      "worldRotation": [
+        0,
+        -90,
+        0
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 3.75,
+      "thickness": 0.125,
+      "cubeSize": 4,
+      "axisRadius": 0.5
+    },
+    {
+      "id": 13,
+      "position": [
+        8.5,
+        -10,
+        2
+      ],
+      "worldRotation": [
+        0,
+        0,
+        0
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 3.75,
+      "thickness": 0.125,
+      "cubeSize": 4,
+      "axisRadius": 0.5
+    },
+    {
+      "id": 14,
+      "position": [
+        4.5,
+        -10,
+        2
+      ],
+      "worldRotation": [
+        0,
+        0,
+        180
+      ],
+      "l1Angle": 0,
+      "l2Angle": 0,
+      "armSize": 3.75,
+      "thickness": 0.125,
+      "cubeSize": 4,
+      "axisRadius": 0.5
+    }
+  ],
+  "connections": [
+    {
+      "id": 2,
+      "planeA": {
+        "mechanismId": 3,
+        "planeIndex": 4
+      },
+      "planeB": {
+        "mechanismId": 4,
+        "planeIndex": 4
+      }
+    },
+    {
+      "id": 13,
+      "planeA": {
+        "mechanismId": 1,
+        "planeIndex": 2
+      },
+      "planeB": {
+        "mechanismId": 6,
+        "planeIndex": 2
+      }
+    },
+    {
+      "id": 14,
+      "planeA": {
+        "mechanismId": 8,
+        "planeIndex": 2
+      },
+      "planeB": {
+        "mechanismId": 7,
+        "planeIndex": 2
+      }
+    },
+    {
+      "id": 19,
+      "planeA": {
+        "mechanismId": 10,
+        "planeIndex": 4
+      },
+      "planeB": {
+        "mechanismId": 9,
+        "planeIndex": 4
+      }
+    },
+    {
+      "id": 20,
+      "planeA": {
+        "mechanismId": 5,
+        "planeIndex": 2
+      },
+      "planeB": {
+        "mechanismId": 2,
+        "planeIndex": 2
+      }
+    },
+    {
+      "id": 21,
+      "planeA": {
+        "mechanismId": 12,
+        "planeIndex": 2
+      },
+      "planeB": {
+        "mechanismId": 11,
+        "planeIndex": 2
+      }
+    },
+    {
+      "id": 22,
+      "planeA": {
+        "mechanismId": 14,
+        "planeIndex": 4
+      },
+      "planeB": {
+        "mechanismId": 13,
+        "planeIndex": 4
+      }
+    }
+  ],
+  "nextConnId": 23
+}
