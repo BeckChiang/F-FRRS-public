@@ -1493,21 +1493,21 @@ appState._saveState();
 
 **中文**：若本平台用于学术研究，请引用以下论文（录用后补全卷期页码）：
 
-> [Authors], "[Paper Title]," *IEEE Transactions on Robotics*, 2026.（待录用 / to appear）
+> B. Jiang and S. Wu, "Design of a Cross-Scale Collaborative Reconfigurable Robot with Fractal Characteristics," *IEEE Transactions on Robotics*, 2026.（待录用 / to appear）
 
 **English**: If you use this platform in academic research, please cite:
 
-> [Authors], "[Paper Title]," *IEEE Transactions on Robotics*, 2026. (to appear)
+> B. Jiang and S. Wu, "Design of a Cross-Scale Collaborative Reconfigurable Robot with Fractal Characteristics," *IEEE Transactions on Robotics*, 2026. (to appear)
 
 ---
 
 ## 版权与许可 / Copyright & License
 
-**中文**：本项目采用 **MIT 许可证** 开源（Copyright (c) 2026 BeckChiang），许可全文见仓库根目录的 `LICENSE` 文件。简而言之：可自由使用、复制、修改、合并、发布、分发、再许可和销售（包括商用），但需在副本中保留上述版权与许可声明。作者与版权持有人对软件不承担任何担保责任。
+**中文**：本项目采用 **MIT 许可证** 开源（Copyright (c) 2026 Binchen Jiang），许可全文见仓库根目录的 `LICENSE` 文件。简而言之：可自由使用、复制、修改、合并、发布、分发、再许可和销售（包括商用），但需在副本中保留上述版权与许可声明。作者与版权持有人对软件不承担任何担保责任。
 
-**English**: This project is licensed under the **MIT License** (Copyright (c) 2026 BeckChiang); see the `LICENSE` file in the repository root for the full text. In short: you may freely use, copy, modify, merge, publish, distribute, sublicense, and sell copies (including commercial use), provided the copyright and permission notice are retained in all copies. The software is provided "as is", without warranty of any kind.
+**English**: This project is licensed under the **MIT License** (Copyright (c) 2026 Binchen Jiang); see the `LICENSE` file in the repository root for the full text. In short: you may freely use, copy, modify, merge, publish, distribute, sublicense, and sell copies (including commercial use), provided the copyright and permission notice are retained in all copies. The software is provided "as is", without warranty of any kind.
 
 ---
 
-**文档版本 / Doc Version**: 1.2  
+**文档版本 / Doc Version**: 1.3  
 **最后更新 / Last Updated**: 2026-10-17
