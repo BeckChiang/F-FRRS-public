@@ -1503,18 +1503,9 @@ appState._saveState();
 
 ## 版权与许可 / Copyright & License
 
-**中文**：本项目默认保留所有权利（Copyright (c) 2026, [作者/机构]）。
+**中文**：本项目采用 **MIT 许可证** 开源（Copyright (c) 2026 BeckChiang），许可全文见仓库根目录的 `LICENSE` 文件。简而言之：可自由使用、复制、修改、合并、发布、分发、再许可和销售（包括商用），但需在副本中保留上述版权与许可声明。作者与版权持有人对软件不承担任何担保责任。
 
-> **投稿/公开发布提示**：若随论文公开本仓库，强烈建议指定明确的开源许可证（推荐 **MIT** 或 **BSD-3-Clause**）。未指定许可证时，法律默认"保留所有权利"，他人（包括审稿人复现后的再使用）无权复用、修改或分发代码。将下方占位符替换为实际许可文本即可。
-
-**English**: All rights reserved by default (Copyright (c) 2026, [Author/Affiliation]).
-
-> **Note for public release**: if this repository is made public alongside a paper, an explicit open-source license is strongly recommended (**MIT** or **BSD-3-Clause**). Without a license, "all rights reserved" applies by default and others (including reviewers reusing the code after reproduction) have no legal right to reuse, modify, or redistribute it. Replace the placeholder below with the actual license text.
-
-```
-[License text, e.g., MIT: Copyright (c) 2026 [Author/Affiliation]
-Permission is hereby granted, free of charge, to any person obtaining a copy ...]
-```
+**English**: This project is licensed under the **MIT License** (Copyright (c) 2026 BeckChiang); see the `LICENSE` file in the repository root for the full text. In short: you may freely use, copy, modify, merge, publish, distribute, sublicense, and sell copies (including commercial use), provided the copyright and permission notice are retained in all copies. The software is provided "as is", without warranty of any kind.
 
 ---
 
