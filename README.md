@@ -7,6 +7,7 @@
 
 ## 目录 / Table of Contents
 
+- [更新日志 / Changelog](#更新日志--changelog)
 - [1. 项目概览 / Project Overview](#1-项目概览--project-overview)
 - [2. 快速开始 / Quick Start](#2-快速开始--quick-start)
 - [3. 目录结构 / Directory Structure](#3-目录结构--directory-structure)
@@ -19,6 +20,68 @@
 - [10. 国际化 / Internationalization](#10-国际化--internationalization)
 - [附录 A：模块依赖关系 / Appendix A](#附录-a模块依赖关系--appendix-a-module-dependencies)
 - [附录 B：常见问题 / Appendix B](#附录-b常见问题--appendix-b-faq)
+
+---
+
+## 更新日志 / Changelog
+
+### 2026-10-18 性能与整理优化 / Performance & Cleanup
+
+**中文**
+
+- ⚡ **拓扑图按需重绘**：拓扑刷新改为按「拓扑版本 + 高亮机构 + 高亮连接 + 主题」缓存，未变化自动跳过——动画期间不再每帧重跑力导向布局
+- ⚡ **机构列表增量更新**：结构（机构/连接/锁定/激活/语言）变化才重建 DOM；坐标/旋转/角度/法向每帧就地更新文本；双环锁定判定按拓扑版本缓存，不再随刷新频率做 N 次 DFS
+- ⚡ **动画期间不回写输入框**：操作面板输入框在动画播放中不再每帧覆写，避免打断用户输入；状态显示仍实时刷新
+- 🐛 **显示修正**：机构列表"法向量起点"由恒为 `(0, 0, 0)` 修正为机构实际位置
+- 🧹 **清理**：`readme.txt` 移除已删除模块（PanelManager/AnimationUtils）的过时引用；`start.bat` 增加端口占用检测，重复双击不再报错
+- 🔧 **开发服务器禁用缓存**：新增 `serve.py`（响应头 `Cache-Control: no-store`），`start.bat` 改用它启动——避免浏览器 heuristic 缓存导致修改后的 JS/CSS 不生效（此前曾出现代码已修复但页面仍运行旧版本的假象）；此前一次 CSS 去重误删响应式规则导致的布局错乱已完整回退
+
+### 2026-10-18 交互增强 / Interaction Enhancements
+
+**中文**
+
+- 🎨 **连接矩阵坐标列**：x/y/z 坐标恒显示（含 0），不使用底色高亮；数值与表头按 红/绿/蓝 加粗着色；数值超宽时字号自适应缩小（替代固定 6 字符截断），缩略图与放大视图一致
+- 🖱️ **已连接列表反选**：点击列表项在 3D 场景高亮该连接的两个平面（青/紫），再次点击取消；支持含基准平面的连接
+- 🗺️ **拓扑图分级刷新根治**：自动/手动闸门下沉到 TopologyRenderer 层，拦截全部自动刷新路径（此前多处 `refresh()` 调用绕过闸门）；工具栏新增"自动≤"界限输入框，可实时调整（1–200），状态徽标显示当前界限值
+- 🧹 **移除"绘制"开关**：自动模式下它本就被锁定为开、不可操作，手动模式下其功能也被"界限 + 刷新按钮"覆盖，属死控件，已连同 `topoDrawEnabled` 状态、`_onTopoDrawToggle` 死代码和废弃 i18n 词条一并删除；`Ctrl+Shift+R` 快捷键改为真正的强制重绘（原走缓存刷新，手动模式下会被闸门拦截）
+
+**English**
+
+- 🎨 **Matrix coordinate columns**: x/y/z coordinates always shown (including zeros), no background highlighting; values and headers bold in red/green/blue; overflowing values shrink adaptively instead of a fixed 6-char truncation; thumbnail and zoomed view consistent
+- 🖱️ **Connection list inverse select**: clicking an item highlights both planes of that connection in 3D (cyan/purple); click again to cancel; base-plane connections supported
+- 🗺️ **Topology refresh gating fixed**: the auto/manual gate moved into TopologyRenderer itself, blocking every automatic refresh path (several `refresh()` calls previously bypassed it); the toolbar gains an "Auto ≤" threshold input (1–200, real-time), and the status badge shows the current threshold
+- 🧹 **"Draw" toggle removed**: it was locked ON and inoperable in auto mode, and superseded by the threshold + refresh button in manual mode (a dead control); deleted along with the `topoDrawEnabled` state, the dead `_onTopoDrawToggle` code and obsolete i18n keys; `Ctrl+Shift+R` now forces a redraw (it previously went through the cached refresh and was blocked by the gate in manual mode)
+
+**English**
+
+- ⚡ **Topology redraw on demand**: topology refresh is now cached by "topology version + highlight mechanism + highlighted connections + theme" and skipped when unchanged — no more force-directed layout on every animation frame
+- ⚡ **Incremental mechanism list**: DOM is rebuilt only when structure changes (mechanisms/connections/locks/active/lang); coordinates/rotation/angles/normal update in place per frame; double-loop detection is cached per topology version instead of N DFS runs per refresh
+- ⚡ **No input rewrite during animation**: the Operations panel inputs are no longer overwritten every frame while an animation plays, avoiding interrupted typing; status displays still update live
+- 🐛 **Display fix**: the mechanism list "normal start" no longer hardcodes `(0, 0, 0)` — it now shows the mechanism's actual position
+- 🧹 **Cleanup**: `readme.txt` no longer references deleted modules (PanelManager/AnimationUtils); `start.bat` detects an occupied port so double-clicking again no longer throws
+- 🔧 **No-cache dev server**: added `serve.py` (`Cache-Control: no-store`); `start.bat` now launches it — prevents the browser's heuristic cache from serving stale JS/CSS after edits (which previously made fixed code appear unfixed); a layout regression caused by an earlier CSS dedup pass (responsive rules dropped) has been fully reverted
+
+### 2026-10 维护更新 / Maintenance Update
+
+**中文**
+
+- 🔗 **连接语义修正**：连接（无论同尺寸还是不同尺寸）只表示拓扑关系，不再强制对齐机构坐标（原 `applyConstraints` 会移动同尺寸机构）
+- 📊 **连接矩阵显示**：全部模块/直接连接子集两种模式均显示 x/y/z 坐标列；子矩阵保持与大矩阵一致的相对顺序（不再把选中项固定到第一位）
+- ↩️ **撤销/重做修复**：恢复状态后不再被约束逻辑改动坐标；动画进行中撤销不再截断重做分支；撤销/重做后保留撤销前的选中机构与选中平面
+- ⌨️ **快捷键修复**：统一大小写匹配（CapsLock/Shift 状态下不再失效）；新增 `Ctrl+Shift+Z` 重做；`?` 帮助键兼容需要 Shift 的键盘布局
+- 💾 **保存路径选择**：所有保存功能（JSON 导出、排序导出、连接矩阵图片、拓扑图图片、截图）在支持的浏览器中均弹出系统"另存为"对话框；导出的 JSON 恢复嵌入连接矩阵
+- 🐛 **缺陷修复**：高亮机构后执行重新排序/排序导出不再导致高亮永久残留；"✖ 清除"按钮不再报错；`getWorldPlaneNormal` 平面 3 法向修正；删除机构时同步清理失效的选中引用
+- 🧹 **代码清理**：删除未使用的 `AnimationUtils.js`、`PanelManager.js` 及相关死代码；`ConnectionMatrix.js`、`ConnectionMatrixRenderer.js`、`Renumber.js` 统一为 UTF-8 编码
+
+**English**
+
+- 🔗 **Connection semantics fixed**: connections (same-size or not) are now purely topological and never force-align mechanism coordinates (the old `applyConstraints` moved same-size mechanisms)
+- 📊 **Connection matrix display**: both full and subset modes show the x/y/z coordinate columns; the sub-matrix keeps the original relative ordering of the full matrix (the selected item is no longer pinned to position 0)
+- ↩️ **Undo/redo fixes**: restored states are no longer altered by constraint logic; undoing during an animation no longer truncates the redo branch; the active mechanism and selected plane are preserved across undo/redo
+- ⌨️ **Shortcut fixes**: case-insensitive matching (works with CapsLock/Shift); `Ctrl+Shift+Z` added for redo; the `?` help shortcut works on layouts where `?` requires Shift
+- 💾 **Save path selection**: all save functions (JSON export, sorted export, matrix PNG, topology PNG, screenshots) open the system "Save As" dialog where supported; exported JSON again embeds the connection matrix
+- 🐛 **Bug fixes**: highlighting no longer becomes permanent after renumber/sorted-export; the "✖ Clear" button no longer throws; `getWorldPlaneNormal` plane-3 normal corrected; stale selection references are cleaned up when a mechanism is deleted
+- 🧹 **Cleanup**: removed unused `AnimationUtils.js`, `PanelManager.js` and related dead code; `ConnectionMatrix.js`, `ConnectionMatrixRenderer.js`, `Renumber.js` unified to UTF-8
 
 ---
 
@@ -73,11 +136,14 @@
 **运行**：
 
 ```bash
-# Windows：双击 start.bat
+# Windows：双击 start.bat（自动启动 serve.py，端口占用时复用已有服务）
 
-# 或手动（跨平台）
-python -m http.server 8080
+# 或手动（跨平台，推荐 serve.py：禁缓存，改代码后刷新即生效）
+python serve.py 8080
 # 然后浏览器访问 http://localhost:8080
+
+# 也可以用普通静态服务器（注意：浏览器可能缓存旧 JS/CSS）
+python -m http.server 8080
 
 # Node.js 环境也可用
 npx serve .
@@ -90,7 +156,8 @@ npx serve .
 ```
 F-FRRS/
 ├── index.html
-├── start.bat
+├── start.bat              # Windows 启动脚本（端口检测 + serve.py）
+├── serve.py               # 禁缓存本地开发服务器（Cache-Control: no-store）
 ├── readme.txt
 ├── vendor/                  # Three.js v0.160.0（本地化，离线可用）
 └── src/
@@ -114,11 +181,14 @@ F-FRRS/
 **Run**:
 
 ```bash
-# Windows: double-click start.bat
+# Windows: double-click start.bat (auto-starts serve.py; reuses an existing server if the port is taken)
 
-# Or manually (cross-platform)
-python -m http.server 8080
+# Or manually (cross-platform; serve.py is recommended: no-cache, edits show up on refresh)
+python serve.py 8080
 # Then open http://localhost:8080 in a browser
+
+# A plain static server also works (note: the browser may cache stale JS/CSS)
+python -m http.server 8080
 
 # With Node.js:
 npx serve .
@@ -133,7 +203,8 @@ npx serve .
 ```
 F-FRRS/
 ├── index.html                          # 主页面 / Main page (HTML + CSS + importmap)
-├── start.bat                           # Windows 启动脚本 / Windows launcher
+├── start.bat                           # Windows 启动脚本（端口检测 + serve.py）/ Windows launcher
+├── serve.py                            # 禁缓存开发服务器 / No-cache dev server
 ├── readme.txt                          # 简要说明 / Brief readme
 ├── vendor/                             # Three.js v0.160.0 本地化依赖 / Vendored Three.js
 │   ├── three.module.js                 # 核心库 / Core library
@@ -154,12 +225,10 @@ F-FRRS/
     │   ├── ConnectionMatrixRenderer.js # 连接矩阵绘制 / Matrix canvas
     │   └── Screenshot.js               # 离屏截图 / Offscreen screenshot
     ├── ui/                             # UI 层 / UI layer
-    │   ├── PanelManager.js             # 面板切换 / Panel switching
     │   ├── UIBinder.js                 # DOM 事件绑定 / DOM event binding
     │   └── Notification.js             # 通知系统 / Notification system
     └── utils/                          # 工具函数 / Utilities
         ├── GeometryUtils.js            # 几何创建/反算 / Geometry creation & inversion
-        ├── AnimationUtils.js           # 缓动函数/Tween / Easing & Tween
         ├── ConnectionMatrix.js         # 连接矩阵算法 / Connection matrix algorithm
         ├── Renumber.js                 # 重新编号算法 / Renumbering algorithm
         └── i18n.js                     # 国际化 / i18n
@@ -280,10 +349,10 @@ The **base plane** is an infinite virtual plane (at `z=0`) with special sentinel
 }
 ```
 
-**约束效果**（在 `applyConstraints` 中）：
+**约束效果**（`applyConstraints` 保留为空实现，仅为兼容调用点）：
 
-- 若 `cubeSize` 相同，则强制 B 机构的位置，使平面 B 中心与平面 A 中心重合
-- 通过 BFS 传播到所有连通机构
+- 连接**只记录拓扑关系**，不影响任何机构的实际坐标（与不同尺寸连接行为一致）
+- 运动传播（移动/旋转时带动相连机构）由 `getAffectedIndices` + 动画目标状态完成，而非约束强制对齐
 
 **English**
 
@@ -297,10 +366,10 @@ A **connection** represents a physical constraint between two planes:
 }
 ```
 
-**Constraint effect** (in `applyConstraints`):
+**Constraint effect** (`applyConstraints` is kept as an empty implementation for call-site compatibility):
 
-- If `cubeSize` matches, force B's position so plane B center coincides with plane A center
-- Propagates to all connected mechanisms via BFS
+- A connection is **purely topological** and never changes any mechanism's actual coordinates (same behavior for all sizes)
+- Motion propagation (moving/rotating connected mechanisms together) is handled by `getAffectedIndices` + animation target states, not by constraint snapping
 
 ---
 
@@ -459,6 +528,8 @@ Legacy files contain `data.mechanisms` (object form with `worldRotation/l1Angle/
 - `M[i][j] = p` 表示机构 i 的平面 p 连接到机构 j
 - `M[i][i] = (s_i - 1) * 4 + code`，code ∈ [1,4] 是内部平行方向编码
 
+**界面显示**：全部模块与直接连接子集两种模式均显示坐标列（列头 `x`/`y`/`z`）；子矩阵保持机构在大矩阵中的相对顺序（按编号升序，选中项不再固定到第一位）。
+
 **English**
 
 `(N+1) × (N+3)` integer matrix:
@@ -467,6 +538,8 @@ Legacy files contain `data.mechanisms` (object form with `worldRotation/l1Angle/
 - Columns 1..N → mechanisms; cols N+1..N+3 → x, y, z
 - `M[i][j] = p` means mechanism i's plane p connects to j
 - `M[i][i] = (s_i - 1) * 4 + code`, code ∈ [1,4] internal parallel direction encoding
+
+**Display**: both full and subset modes show the coordinate columns (headers `x`/`y`/`z`); the sub-matrix keeps the mechanisms' relative order from the full matrix (ascending, the selected item is no longer pinned to the first position).
 
 ---
 
@@ -558,7 +631,7 @@ animate();
 | `removeMechanism(idx, record)` | 删除机构（级联删除连接） |
 | `addConnection(A, B, record)` | 添加连接（去重） |
 | `removeConnection(id, record)` | 删除连接（重排编号） |
-| `applyConstraints()` | 应用连接约束（BFS 传播位置） |
+| `applyConstraints()` | 兼容保留（空实现）；连接仅表示拓扑关系，不改动坐标 |
 | `getConnectionChain(idx, "L1"/"L2")` | 获取连接链 |
 | `isInBothLoops(idx)` | 检测双环锁定 |
 | `renumber()` | 重排序所有机构与连接 |
@@ -589,7 +662,7 @@ animate();
 | `removeMechanism(idx, record)` | Remove (cascade connections) |
 | `addConnection(A, B, record)` | Add connection (dedupe) |
 | `removeConnection(id, record)` | Remove (renumber) |
-| `applyConstraints()` | Apply constraints (BFS propagation) |
+| `applyConstraints()` | Kept for compatibility (no-op); connections are topological only and never change coordinates |
 | `getConnectionChain(idx, "L1"/"L2")` | Get connection chain |
 | `isInBothLoops(idx)` | Detect double-loop lock |
 | `renumber()` | Renumber all |
@@ -763,6 +836,13 @@ Simple data container:
 - 选中连接边：`#00ccff`（青）
 - 环边：`#ff8800`（橙）
 
+**刷新策略**：
+
+- 缓存键 = 拓扑版本 + 高亮机构 + 高亮连接 + 主题，未变化直接跳过
+- `autoRefresh = true`（机构数 ≤ 界限）：允许 `refresh()` 自动重绘
+- `autoRefresh = false`（机构数 > 界限）：`refresh()` 一律跳过，仅 `forceRefresh()`（刷新按钮 / Ctrl+Shift+R）重绘
+- 界限由工具栏"自动≤"输入框实时调整（1–200，默认 10）
+
 **English**
 
 **Layout algorithm** (`_drawTopology`):
@@ -791,6 +871,13 @@ Simple data container:
 - Selected edge: `#00ccff` (cyan)
 - Cycle edge: `#ff8800` (orange)
 
+**Refresh policy**:
+
+- Cache key = topology version + highlighted mechanism + highlighted connections + theme; unchanged draws are skipped
+- `autoRefresh = true` (mechanisms ≤ threshold): `refresh()` may redraw automatically
+- `autoRefresh = false` (mechanisms > threshold): `refresh()` is always skipped; only `forceRefresh()` (Refresh button / Ctrl+Shift+R) redraws
+- The threshold is adjusted live via the toolbar "Auto ≤" input (1–200, default 10)
+
 ---
 
 ### 6.8 `src/renderer/ConnectionMatrixRenderer.js` — 连接矩阵 / Connection Matrix
@@ -806,8 +893,8 @@ Simple data container:
 
 **高亮规则**：
 
-- `full` 模式：激活机构对应的行列高亮
-- `subset` 模式：激活机构固定在第 0 行/列，与其直接相连的单元格高亮
+- `full` 模式：激活机构对应的行列高亮（坐标列不参与高亮）
+- `subset` 模式：子矩阵保持机构在大矩阵中的相对顺序（按编号升序），激活机构所在行列及其直接相连的单元格高亮
 
 **绘制**：
 
@@ -818,6 +905,11 @@ Simple data container:
   - 对角线：浅绿/深绿
   - 基准平面行：浅黄/深黄
   - 高亮：亮黄/金黄
+- 坐标列（x/y/z，恒为最后 3 列）：
+  - 数值恒显示（含 0），不使用任何底色高亮
+  - 数值与表头按 红/绿/蓝 加粗着色（深浅主题各一套）
+  - 数值超宽时字号自适应缩小（最小 6px），仍放不下才截断
+- 缩略图与放大模态框共用同一段 `_draw` 绘制逻辑
 
 **English**
 
@@ -830,8 +922,8 @@ Simple data container:
 
 **Highlight rules**:
 
-- `full`: Rows/cols of active mechanism highlighted
-- `subset`: Active pinned to row/col 0; directly-connected cells highlighted
+- `full`: Rows/cols of the active mechanism highlighted (coordinate columns excluded)
+- `subset`: The sub-matrix keeps the mechanisms' relative order from the full matrix (ascending); the active mechanism's row/col and directly-connected cells are highlighted
 
 **Rendering**:
 
@@ -842,6 +934,11 @@ Simple data container:
   - Diagonal: light green/dark green
   - Base plane row: light yellow/dark yellow
   - Highlight: bright yellow/gold
+- Coordinate columns (x/y/z, always the last 3):
+  - Values always drawn (including zeros), no background highlighting of any kind
+  - Values and headers bold in red/green/blue (separate palettes for dark/light themes)
+  - Overflow: font size shrinks adaptively (min 6px) before any truncation
+- Thumbnail and zoomed modal share the same `_draw` code path
 
 ---
 
@@ -941,23 +1038,7 @@ Simple data container:
 
 ---
 
-### 6.12 `src/ui/PanelManager.js` — 面板管理 / Panel Manager
-
-**中文**
-
-- 4 个面板：`ui` / `gen` / `op` / `conn`
-- `show(id)` / `toggle(id)` / `getActive()`
-- 触发 `panelchange` 自定义事件
-
-**English**
-
-- 4 panels: `ui` / `gen` / `op` / `conn`
-- `show(id)` / `toggle(id)` / `getActive()`
-- Dispatches `panelchange` custom event
-
----
-
-### 6.13 `src/utils/GeometryUtils.js` — 几何工具 / Geometry Utils
+### 6.12 `src/utils/GeometryUtils.js` — 几何工具 / Geometry Utils
 
 **中文**
 
@@ -1001,7 +1082,7 @@ Simple data container:
 
 ---
 
-### 6.14 `src/utils/ConnectionMatrix.js` — 连接矩阵 / Connection Matrix
+### 6.13 `src/utils/ConnectionMatrix.js` — 连接矩阵 / Connection Matrix
 
 **中文**
 
@@ -1039,7 +1120,7 @@ Simple data container:
 
 ---
 
-### 6.15 `src/utils/Renumber.js` — 重编号 / Renumbering
+### 6.14 `src/utils/Renumber.js` — 重编号 / Renumbering
 
 **中文**
 
@@ -1077,29 +1158,7 @@ Simple data container:
 
 ---
 
-### 6.16 `src/utils/AnimationUtils.js` — 动画工具 / Animation Utils
-
-**中文**
-
-- `Easing`：**30+ 缓动函数**（Linear/Quad/Cubic/Sine/Expo/Elastic/Back/Bounce）
-- `Tween`：单属性补间（支持对象插值）
-- `TweenManager`：多补间管理器（RAF 驱动）
-- 全局单例：`getDefaultTweenManager()`
-
-**注**：主流程**未使用** `TweenManager`（`AppState` 内置动画更快），但模块保留供扩展。
-
-**English**
-
-- `Easing`: **30+ easing functions** (Linear/Quad/Cubic/Sine/Expo/Elastic/Back/Bounce)
-- `Tween`: Single-property tween (supports object interpolation)
-- `TweenManager`: Multi-tween manager (RAF-driven)
-- Global singleton: `getDefaultTweenManager()`
-
-**Note**: The main flow **does not use** `TweenManager` (AppState's built-in animation is faster), but kept for extension.
-
----
-
-### 6.17 `src/utils/i18n.js` — 国际化 / i18n
+### 6.15 `src/utils/i18n.js` — 国际化 / i18n
 
 **中文**
 
@@ -1335,17 +1394,20 @@ maxSpeed = 20
 | 快捷键 / Shortcut | 功能 / Function |
 |---|---|
 | `Ctrl+Z` | 撤销 / Undo |
-| `Ctrl+Y` | 重做 / Redo |
+| `Ctrl+Y` 或 `Ctrl+Shift+Z` | 重做 / Redo |
 | `Delete` / `Backspace` | 删除当前机构 / Delete active mechanism |
-| `Ctrl+S` | 导出 JSON / Export JSON |
+| `Ctrl+S` | 导出 JSON（可选择保存路径）/ Export JSON (save path selectable) |
 | `Ctrl+O` | 导入 JSON / Import JSON |
-| `Ctrl+Shift+E` | 截屏 / Screenshot |
+| `Ctrl+Shift+E` | 截屏（可选择保存路径）/ Screenshot (save path selectable) |
 | `Ctrl+1` ~ `Ctrl+4` | 切换面板 / Switch panel |
 | `Ctrl+L` | 机构列表 / Mechanism list |
 | `Ctrl+H` | 隐藏控件 / Hide controls |
 | `Ctrl+C` | 创建连接 / Create connection |
 | `Ctrl+Shift+R` | 刷新拓扑图 / Refresh topology |
 | `?` 或 `/` | 帮助 / Help |
+
+> 注 / Note：字母快捷键大小写不敏感（CapsLock/Shift 状态下同样生效）。`?` 在大多数键盘布局上需要配合 Shift 使用。
+> Letter shortcuts are case-insensitive (work with CapsLock/Shift). On most layouts `?` is typed with Shift.
 
 ---
 
@@ -1509,5 +1571,5 @@ appState._saveState();
 
 ---
 
-**文档版本 / Doc Version**: 1.3  
-**最后更新 / Last Updated**: 2026-10-17
+**文档版本 / Doc Version**: 1.5  
+**最后更新 / Last Updated**: 2026-10-18

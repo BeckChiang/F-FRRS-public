@@ -17,15 +17,6 @@ export function roundToCent(v) {
 }
 
 /**
- * 四舍五入到0.5的倍数
- */
-export function roundToHalf(v) {
-  if (Math.abs(v) < 0.005) return 0;
-  const r = Math.round(v * 2) / 2;
-  return Math.abs(r) < 0.005 ? 0 : r;
-}
-
-/**
  * 归一化角度到 -180 ~ 180 度
  */
 export function normalizeAngleDeg(d) {
@@ -66,13 +57,6 @@ export function easeInOutCubic(t) {
 }
 
 /**
- * 通用缓动函数
- */
-export function getEasing(t, type) {
-  return type === "easeInOut" ? easeInOutCubic(t) : t;
-}
-
-/**
  * 格式化平面全称：N{机构ID}-P{平面索引}
  * ✅ 基准平面（mechIndex < 0）视为机构 0，输出 "N0-P{idx}"
  */
@@ -83,26 +67,6 @@ export function formatPlaneFull(mechIndex, planeIndex, mechanisms) {
   const id =
     mechanisms && mechanisms[mechIndex] ? mechanisms[mechIndex].id : "?";
   return `N${id}-P${planeIndex}`;
-}
-
-/**
- * 格式化平面组：N{机构ID}-P{平面1}-P{平面2}... 如果包含所有4个平面则简写为N{ID}
- */
-export function formatPlaneGroup(mechIndex, planeIndices, mechanisms) {
-  const id =
-    mechanisms && mechanisms[mechIndex] ? mechanisms[mechIndex].id : "?";
-  const all = [1, 2, 3, 4];
-  const hasAll = all.every((p) => planeIndices.includes(p));
-  if (hasAll && planeIndices.length === 4) return `N${id}`;
-  const sorted = [...planeIndices].sort((a, b) => a - b);
-  return `N${id}-${sorted.map((p) => `P${p}`).join("-")}`;
-}
-
-/**
- * 获取机构ID（兼容旧调用）
- */
-export function getMechId(mech) {
-  return mech ? mech.id : "?";
 }
 
 /**
@@ -481,10 +445,10 @@ export function snapValue(v, eps = 0.01) {
  */
 export function getWorldPlaneNormal(mech, planeIndex) {
   let local;
-  if (planeIndex === 1) local = new THREE.Vector3(0, 0, -1);    // ✅ 修正
-  else if (planeIndex === 2) local = new THREE.Vector3(1, 0, 0);
-  else if (planeIndex === 3) local = new THREE.Vector3(0, 0, -1);
-  else if (planeIndex === 4) local = new THREE.Vector3(-1, 0, 0);
+  if (planeIndex === 1) local = new THREE.Vector3(0, 0, -1); // 底面
+  else if (planeIndex === 2) local = new THREE.Vector3(1, 0, 0); // 右面
+  else if (planeIndex === 3) local = new THREE.Vector3(0, 0, 1); // 顶面
+  else if (planeIndex === 4) local = new THREE.Vector3(-1, 0, 0); // 左面
   else return new THREE.Vector3(0, 0, 1);
 
   const lAngle = planeIndex <= 2 ? mech.l1Angle : mech.l2Angle;

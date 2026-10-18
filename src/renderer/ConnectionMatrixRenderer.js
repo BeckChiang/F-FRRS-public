@@ -59,7 +59,7 @@ export class ConnectionMatrixRenderer {
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
 
-    // ---- 1. �ߴ磺�����õ��÷���������ʽ�ߴ磬����� CSS ��������ʾ�ߴ� ----
+    // ---- 1. 尺寸：优先用调用方给出的显式尺寸，否则读 CSS 决定的显示尺寸 ----
     let W, H;
     if (widthOverride && heightOverride) {
       W = widthOverride;
@@ -76,14 +76,14 @@ export class ConnectionMatrixRenderer {
     W = Math.max(120, W);
     H = Math.max(80, H);
 
-    // �Ŵ�ģʽ�ø��� DPR����֤����
+    // 放大模式用更高 DPR，保证清晰
     const dpr = upscale
       ? Math.min(Math.max(window.devicePixelRatio || 1, 2), 3)
       : Math.min(window.devicePixelRatio || 1, 2);
 
     canvas.width = Math.round(W * dpr);
     canvas.height = Math.round(H * dpr);
-    // ���Ŵ�ģʽ��ʽ���� CSS �ߴ磨��ֹ����ͼ�ص���������ͼ���� CSS 100%
+    // 仅放大模式显式设置 CSS 尺寸（防止缩略图回弹），缩略图保持 CSS 100%
     if (upscale) {
       canvas.style.width = W + "px";
       canvas.style.height = H + "px";
@@ -94,12 +94,12 @@ export class ConnectionMatrixRenderer {
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
 
-    // ---- 2. ���� ----
+    // ---- 2. 背景 ----
     const isLight = document.body.classList.contains("light-theme");
     ctx.fillStyle = isLight ? "#f8f9fa" : "#0f1629";
     ctx.fillRect(0, 0, W, H);
 
-    // ---- 3. ���� ----
+    // ---- 3. 数据 ----
     const data = this._computeData();
     if (!data) {
       ctx.fillStyle = isLight ? "#888" : "#b0b0b0";
@@ -125,20 +125,20 @@ export class ConnectionMatrixRenderer {
     const rows = rowLabels.length;
     const cols = colLabels.length;
 
-    // ---- 4. ���� ----
+    // ---- 4. 布局 ----
     const labelW = Math.max(24, Math.min(upscale ? 70 : 50, W * 0.1));
     const labelH = Math.max(16, Math.min(upscale ? 40 : 26, H * 0.1));
     const padding = 8;
     const availW = W - labelW - padding * 2;
     const availH = H - labelH - padding * 2;
 
-    // �Ŵ�ʱ��Ԫ�����չ������������ͼ��������
+    // 放大时单元格可扩展到填满；缩略图限制上限
     const maxCellW = upscale ? Infinity : 60;
     const maxCellH = upscale ? Infinity : 36;
 
     const idealW = availW / cols;
     const idealH = availH / rows;
-    // �Ŵ�ʱ���������С��ֵ���������ֵ�Ԫ��ӽ����Σ������������
+    // 放大时用两方向较小的值，尽量保持单元格接近方形，避免过度拉伸
     const squareIdeal = Math.min(idealW, idealH);
 
     const cellW = Math.max(
@@ -155,7 +155,7 @@ export class ConnectionMatrixRenderer {
     const totalW = labelW + gridW;
     const totalH = labelH + gridH;
 
-    // �������
+    // 整体居中
     const baseX = (W - totalW) / 2;
     const baseY = (H - totalH) / 2;
     const startX = baseX + labelW;
@@ -180,6 +180,8 @@ export class ConnectionMatrixRenderer {
           labelText: "#374151",
           baseLabelText: "#d97706",
           highlightLabelText: "#2563eb",
+          // 坐标列数值/表头专用色：x=红 y=绿 z=蓝
+          coordText: ["#dc2626", "#16a34a", "#2563eb"],
         }
       : {
           cellBg: "#1a2238",
@@ -199,9 +201,10 @@ export class ConnectionMatrixRenderer {
           labelText: "#b0b0b0",
           baseLabelText: "#ffaa33",
           highlightLabelText: "#4a9eff",
+          coordText: ["#f87171", "#4ade80", "#60a5fa"],
         };
 
-    // ---- 5. �б�ǩ ----
+    // ---- 5. 列标签 ----
     const labelFontSize = Math.max(
       9,
       Math.min(16, Math.min(cellW * 0.55, cellH * 0.5))
@@ -211,14 +214,17 @@ export class ConnectionMatrixRenderer {
     ctx.textBaseline = "bottom";
     for (let j = 0; j < cols; j++) {
       const x = startX + j * cellW + cellW / 2;
+      // 坐标列（x/y/z）表头：红/绿/蓝加粗，其余按高亮/普通着色
       ctx.fillStyle =
-        highlightCols && highlightCols.has(j)
-          ? colors.highlightLabelText
-          : colors.labelText;
+        j >= cols - 3
+          ? colors.coordText[j - (cols - 3)]
+          : highlightCols && highlightCols.has(j)
+            ? colors.highlightLabelText
+            : colors.labelText;
       ctx.fillText(String(colLabels[j]), x, startY - 3);
     }
 
-    // ---- 6. �б�ǩ ----
+    // ---- 6. 行标签 ----
     ctx.font = `bold ${labelFontSize}px sans-serif`;
     ctx.textAlign = "right";
     ctx.textBaseline = "middle";
@@ -234,12 +240,11 @@ export class ConnectionMatrixRenderer {
       ctx.fillText(label, x, y);
     }
 
-    // ---- 7. ��Ԫ�� ----
+    // ---- 7. 单元格 ----
     const cellFontSize = Math.max(
       8,
       Math.min(16, Math.min(cellW * 0.5, cellH * 0.5))
     );
-    ctx.font = `${cellFontSize}px sans-serif`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     for (let i = 0; i < rows; i++) {
@@ -249,6 +254,8 @@ export class ConnectionMatrixRenderer {
         const x = startX + j * cellW;
         const y = startY + i * cellH;
         const val = M[i][j];
+        const isCoordCol = j >= cols - 3; // 坐标列（x/y/z）恒为最后 3 列
+        const coordIdx = isCoordCol ? j - (cols - 3) : -1;
         const isHiCol = highlightCols && highlightCols.has(j);
         const isHiCell = highlightCells && highlightCells.has(i + "," + j);
         const isHi = isHiRow || isHiCol || isHiCell;
@@ -258,23 +265,26 @@ export class ConnectionMatrixRenderer {
         let border = colors.cellBorder;
         let fg = colors.labelText;
 
-        if (isBaseRow && val !== 0) {
-          bg = colors.baseBg;
-          border = colors.baseBorder;
-          fg = colors.baseText;
-        } else if (isDiag && val !== 0) {
-          bg = colors.diagBg;
-          border = colors.diagBorder;
-          fg = colors.diagText;
-        } else if (val !== 0) {
-          bg = colors.nonZeroBg;
-          border = colors.nonZeroBorder;
-          fg = colors.nonZeroText;
-        }
-        if (isHi) {
-          bg = colors.highlightBg;
-          border = colors.highlightBorder;
-          fg = colors.highlightText;
+        if (!isCoordCol) {
+          // 坐标列不使用底色高亮（无连接/对角线/基准/选中底色）
+          if (isBaseRow && val !== 0) {
+            bg = colors.baseBg;
+            border = colors.baseBorder;
+            fg = colors.baseText;
+          } else if (isDiag && val !== 0) {
+            bg = colors.diagBg;
+            border = colors.diagBorder;
+            fg = colors.diagText;
+          } else if (val !== 0) {
+            bg = colors.nonZeroBg;
+            border = colors.nonZeroBorder;
+            fg = colors.nonZeroText;
+          }
+          if (isHi) {
+            bg = colors.highlightBg;
+            border = colors.highlightBorder;
+            fg = colors.highlightText;
+          }
         }
 
         ctx.fillStyle = bg;
@@ -283,15 +293,31 @@ export class ConnectionMatrixRenderer {
         ctx.lineWidth = 1;
         ctx.strokeRect(x + 0.5, y + 0.5, cellW - 2, cellH - 2);
 
-        if (val !== 0) {
-          ctx.fillStyle = fg;
+        // 坐标列恒显示（含 0），加粗 + 红/绿/蓝；其余列仅非零显示
+        if (val !== 0 || isCoordCol) {
           let text;
           if (typeof val === "number") {
             text = Number.isInteger(val) ? String(val) : val.toFixed(2);
           } else {
             text = String(val);
           }
-          if (text.length > 6) text = text.slice(0, 6);
+          if (isCoordCol) {
+            fg = colors.coordText[coordIdx];
+            ctx.font = `bold ${cellFontSize}px sans-serif`;
+            // 溢出适配：字号自适应缩小，仍放不下再截断（替代固定 6 字符截断）
+            const maxW = cellW - 4;
+            let fs = cellFontSize;
+            while (fs > 6 && ctx.measureText(text).width > maxW) {
+              fs -= 1;
+              ctx.font = `bold ${fs}px sans-serif`;
+            }
+            while (text.length > 2 && ctx.measureText(text).width > maxW) {
+              text = text.slice(0, -1);
+            }
+          } else {
+            ctx.font = `${cellFontSize}px sans-serif`;
+          }
+          ctx.fillStyle = fg;
           ctx.fillText(text, x + cellW / 2, y + cellH / 2);
         }
       }
@@ -322,12 +348,13 @@ export class ConnectionMatrixRenderer {
   _extractFull(M, mechs) {
     const N = mechs.length;
     const rowLabels = [...mechs.map((m) => m.id), 0];
-    const colLabels = mechs.map((m) => m.id);
+    // 列标签：机构 id + 坐标列 x/y/z
+    const colLabels = [...mechs.map((m) => m.id), "x", "y", "z"];
 
-    // ֻ��ʾ�����У����������У�
+    // 显示全部列（含坐标列，坐标在大矩阵的 N..N+2 列）
     const dispM = [];
     for (let i = 0; i <= N; i++) {
-      dispM.push(M[i].slice(0, N));
+      dispM.push(M[i].slice(0, N + 3));
     }
 
     const highlightRows = new Set();
@@ -338,6 +365,7 @@ export class ConnectionMatrixRenderer {
     if (activeIdx >= 0 && activeIdx < N) {
       highlightRows.add(activeIdx);
       highlightCols.add(activeIdx);
+      // 高亮仅针对机构列，坐标列不参与
       for (let j = 0; j < N; j++) {
         if (dispM[activeIdx][j] !== 0) highlightCells.add(activeIdx + "," + j);
       }
@@ -374,12 +402,12 @@ export class ConnectionMatrixRenderer {
       }
     }
 
+    // 保持与大矩阵一致的相对顺序（按索引升序），不把选中项提前
     const sorted = [...relevant].sort((a, b) => a - b);
-    sorted.splice(sorted.indexOf(selectedIdx), 1);
-    sorted.unshift(selectedIdx);
 
     const rowLabels = sorted.map((idx) => mechs[idx].id);
-    const colLabels = sorted.map((idx) => mechs[idx].id);
+    // 列标签：机构 id + 坐标列 x/y/z
+    const colLabels = [...sorted.map((idx) => mechs[idx].id), "x", "y", "z"];
     if (includeBase) rowLabels.push(0);
 
     const dispM = [];
@@ -387,24 +415,32 @@ export class ConnectionMatrixRenderer {
       const row = [];
       if (i < sorted.length) {
         for (let j = 0; j < colLabels.length; j++) {
-          row.push(M[sorted[i]][sorted[j]]);
+          // 机构列取子矩阵交叉值，坐标列取大矩阵对应行的 x/y/z
+          row.push(
+            j < sorted.length
+              ? M[sorted[i]][sorted[j]]
+              : M[sorted[i]][N + (j - sorted.length)]
+          );
         }
       } else {
         for (let j = 0; j < colLabels.length; j++) {
-          row.push(M[N][sorted[j]]);
+          // 基准平面行：机构列取大矩阵基准行，坐标列恒为 0
+          row.push(j < sorted.length ? M[N][sorted[j]] : 0);
         }
       }
       dispM.push(row);
     }
 
-    const highlightRows = new Set([0]);
-    const highlightCols = new Set([0]);
+    // 高亮选中机构所在的位置（保持原相对位置后可能不在第一行/列）
+    const selPos = sorted.indexOf(selectedIdx);
+    const highlightRows = new Set([selPos]);
+    const highlightCols = new Set([selPos]);
     const highlightCells = new Set();
-    for (let j = 0; j < colLabels.length; j++) {
-      if (dispM[0][j] !== 0) highlightCells.add("0," + j);
+    for (let j = 0; j < sorted.length; j++) {
+      if (dispM[selPos][j] !== 0) highlightCells.add(selPos + "," + j);
     }
     for (let i = 0; i < rowLabels.length; i++) {
-      if (dispM[i][0] !== 0) highlightCells.add(i + ",0");
+      if (dispM[i][selPos] !== 0) highlightCells.add(i + "," + selPos);
     }
 
     return {
@@ -417,7 +453,7 @@ export class ConnectionMatrixRenderer {
     };
   }
 
-  /** ���Ƶ�ָ�� canvas�����Ŵ�ģ̬��ʹ�ã����� ���»��ƶ������� */
+  /** 绘制到指定 canvas（供放大模态框使用）—— 重新绘制而非拉伸 */
   drawToCanvas(targetCanvas, width, height) {
     if (!targetCanvas) return;
     const W = Math.max(200, width || targetCanvas.clientWidth || 800);

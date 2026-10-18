@@ -4,8 +4,6 @@ import { t, setLang, getLang } from "../utils/i18n.js";
 import {
   roundToCent,
   normalizeAngleDeg,
-  computeCornerRadius,
-  getFixedCorners,
   quatToEulerDeg,
   createMechanism,
   getPlaneWorldCenter,
@@ -16,6 +14,9 @@ import { Mechanism } from "../core/Mechanism.js";
 import { formatPlaneFull } from "../utils/GeometryUtils.js";
 import { ConnectionMatrixRenderer } from "../renderer/ConnectionMatrixRenderer.js";
 import { buildConnectionMatrix } from "../utils/ConnectionMatrix.js";
+
+/** 拓扑图自动刷新机构数上限：≤ 此值自动刷新，超过则仅手动（点击刷新控件） */
+const TOPO_AUTO_MAX = 10;
 
 export class UIBinder {
   constructor(appState, sceneManager, topologyRenderer, notification) {
@@ -38,7 +39,7 @@ export class UIBinder {
     this._lastTopoRefreshTime = 0;
 
     this.topoAutoUpdate = true; // 初始为自动
-    this.topoDrawEnabled = true;
+    this.topoAutoMax = TOPO_AUTO_MAX; // 自动绘制数量界限（可在界面上实时调整）
     this._lastMechCount = 0;
 
     this._bindAll();
@@ -158,9 +159,9 @@ export class UIBinder {
       topoZoomBtn: document.getElementById("topo-zoom-btn"),
       topoSaveBtn: document.getElementById("topo-save-btn"),
       topoRefreshBtn: document.getElementById("topo-refresh-btn"),
+      topoAutoMaxInput: document.getElementById("topo-auto-max-input"),
       topoModalSaveBtn: document.getElementById("topo-modal-save-btn"),
       topoModalCloseBtn: document.getElementById("topo-modal-close-btn"),
-      topoDrawCheckbox: document.getElementById("topo-draw-checkbox"),
       langButtons: document.querySelectorAll(".lang-btn"),
       curFx: document.getElementById("cur-fx"),
       curFy: document.getElementById("cur-fy"),
@@ -296,19 +297,16 @@ export class UIBinder {
     });
 
     // 拓扑图
-    this._bind("topoDrawCheckbox", "change", () => {
-      const enabled = this.dom.topoDrawCheckbox.checked;
-      this.topologyRenderer.setEnabled(enabled);
-      // 强制刷新
-      if (enabled) {
-        this.topologyRenderer.version = -1;
-        this.topologyRenderer.refresh(this.appState._topoHighlightId);
-      }
-    });
     this._bind("topoRefreshBtn", "click", () => {
+      // 手动刷新控件：任何模式下都强制重绘（手动模式下这是唯一的自动刷新途径）
       this.topologyRenderer.forceRefresh(this.appState._topoHighlightId);
       this.notification.showSuccess(t("topo-refreshed"), 1500);
     });
+    // 自动绘制数量界限：实时调整
+    if (this.dom.topoAutoMaxInput) {
+      this._bind("topoAutoMaxInput", "input", () => this._onTopoAutoMaxChange());
+      this._bind("topoAutoMaxInput", "change", () => this._onTopoAutoMaxChange());
+    }
     this._bind("topoZoomBtn", "click", () => this._openTopoModal());
     this._bind("topoSaveBtn", "click", () => this._saveTopo());
     this._bind("topoModalCloseBtn", "click", () => this._closeTopoModal());
@@ -493,8 +491,6 @@ export class UIBinder {
     this.dom.genA1.value = a1.toFixed(2);
     this.dom.genA2.value = a2.toFixed(2);
     const pos = new THREE.Vector3(x, y, z);
-    const radius = computeCornerRadius(cubeSize, thickness);
-    const corners = getFixedCorners();
 
     const group = createMechanism(
       pos,
@@ -610,8 +606,6 @@ export class UIBinder {
     const a1 = normalizeAngleDeg(parseFloat(this.dom.genA1.value) || 0);
     const a2 = normalizeAngleDeg(parseFloat(this.dom.genA2.value) || 0);
     const pos = new THREE.Vector3(x, y, z);
-    const radius = computeCornerRadius(cubeSize, thickness);
-    const corners = getFixedCorners();
     const group = createMechanism(
       pos,
       rot,
@@ -945,7 +939,7 @@ export class UIBinder {
         hasL2,
         () => {
           this.appState.applyConstraints();
-          this.appState._saveState();
+          this.appState._commitPostAnimation();
           this._refreshUI();
         },
         true,
@@ -954,7 +948,7 @@ export class UIBinder {
     } else {
       this.appState.applyTargetState(targetState, sorted, hasL1, hasL2);
       this.appState.applyConstraints();
-      this.appState._saveState();
+      this.appState._commitPostAnimation();
       this._refreshUI();
     }
   }
@@ -1081,7 +1075,7 @@ export class UIBinder {
       false,
       () => {
         this.appState.applyConstraints();
-        this.appState._saveState();
+        this.appState._commitPostAnimation();
         this._refreshUI();
       },
       false
@@ -1186,7 +1180,7 @@ export class UIBinder {
       false,
       () => {
         this.appState.applyConstraints();
-        this.appState._saveState();
+        this.appState._commitPostAnimation();
         this._refreshUI();
       },
       false,
@@ -1235,7 +1229,7 @@ export class UIBinder {
   _onConnClear() {
     this.appState.clearConnectionSelection();
     this.appState.clearConnectionChainHighlight();
-    if (this.appState.selectedPlaneData) this.appState.updateOpPanel();
+    if (this.appState.selectedPlaneData) this._updateOpPanel();
     this.topologyRenderer.refresh(this.appState._topoHighlightId);
     this._refreshUI();
   }
@@ -1303,27 +1297,81 @@ export class UIBinder {
     this.dom.matrixModal.classList.remove("visible");
   }
 
-  _saveMatrix() {
-    if (!this.matrixRenderer || !this.matrixRenderer.canvas) return;
+  /**
+   * 通用文件保存（支持选择保存路径）
+   * - 浏览器支持 showSaveFilePicker（Chromium/Edge 等）时弹出系统"另存为"对话框，可选择目录
+   * - 其他浏览器回退为输入文件名后下载到默认下载目录
+   * @param {Blob} blob - 文件内容
+   * @param {string} suggestedName - 建议文件名
+   * @param {object} [type] - 文件类型描述，如 { description: "PNG 图片", accept: { "image/png": [".png"] } }
+   * @returns {Promise<{success: boolean, aborted?: boolean, error?: string}>}
+   */
+  async _saveBlob(blob, suggestedName, type) {
+    if (window.showSaveFilePicker) {
+      try {
+        const handle = await window.showSaveFilePicker({
+          suggestedName,
+          types: type ? [type] : undefined,
+        });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        return { success: true };
+      } catch (err) {
+        if (err.name === "AbortError") return { success: false, aborted: true };
+        return { success: false, error: err.message };
+      }
+    }
+    // 回退：prompt 输入文件名后使用 a[download]
+    const name = prompt(t("export-enter-filename"), suggestedName);
+    if (!name) return { success: false, aborted: true };
+    const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.download = `connection_matrix_${new Date()
-      .toISOString()
-      .slice(0, 19)
-      .replace(/[:-]/g, "")}.png`;
-    a.href = this.matrixRenderer.canvas.toDataURL("image/png");
+    a.href = url;
+    a.download = name;
     a.click();
+    URL.revokeObjectURL(url);
+    return { success: true };
   }
 
-  _saveMatrixModal() {
+  /** canvas → PNG Blob */
+  _canvasToPngBlob(canvas) {
+    return new Promise((resolve, reject) => {
+      canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/png");
+    });
+  }
+
+  async _saveMatrix() {
+    if (!this.matrixRenderer || !this.matrixRenderer.canvas) return;
+    try {
+      const blob = await this._canvasToPngBlob(this.matrixRenderer.canvas);
+      const name = `connection_matrix_${new Date().toISOString().slice(0, 19).replace(/[:-]/g, "")}.png`;
+      const r = await this._saveBlob(blob, name, {
+        description: "PNG 图片",
+        accept: { "image/png": [".png"] },
+      });
+      if (r.success) this.notification.showSuccess(t("conn-matrix-save") + " ✓");
+      else if (r.error) this.notification.showError(r.error);
+    } catch (err) {
+      this.notification.showError(err.message);
+    }
+  }
+
+  async _saveMatrixModal() {
     const canvas = this.dom.matrixModalCanvas;
     if (!canvas) return;
-    const a = document.createElement("a");
-    a.download = `connection_matrix_${new Date()
-      .toISOString()
-      .slice(0, 19)
-      .replace(/[:-]/g, "")}.png`;
-    a.href = canvas.toDataURL("image/png");
-    a.click();
+    try {
+      const blob = await this._canvasToPngBlob(canvas);
+      const name = `connection_matrix_${new Date().toISOString().slice(0, 19).replace(/[:-]/g, "")}.png`;
+      const r = await this._saveBlob(blob, name, {
+        description: "PNG 图片",
+        accept: { "image/png": [".png"] },
+      });
+      if (r.success) this.notification.showSuccess(t("conn-matrix-save") + " ✓");
+      else if (r.error) this.notification.showError(r.error);
+    } catch (err) {
+      this.notification.showError(err.message);
+    }
   }
 
   // ==================== 导出（重构） ====================
@@ -1514,68 +1562,6 @@ export class UIBinder {
 
   // ==================== 导入导出 ====================
 
-  /*_export() {
-    const data = this.appState.serialize();
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `robot_state_${new Date()
-      .toISOString()
-      .slice(0, 19)
-      .replace(/[:-]/g, "")}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }*/
-
-  _export() {
-    const data = this.appState.serialize();
-
-    // 兜底：若 serialize() 未提供 _ 注释字段（旧版本），避免崩溃
-    const comments = Array.isArray(data._) ? data._ : [];
-
-    // 数组块：每个元素一行
-    const arrBlock = (arr, indent = "    ") => {
-      if (!Array.isArray(arr) || arr.length === 0) return "[]";
-      return (
-        "[\n" +
-        arr.map((item) => indent + JSON.stringify(item)).join(",\n") +
-        "\n  ]"
-      );
-    };
-
-    const lines = [];
-    lines.push("{");
-
-    // 注释数组
-    lines.push('  "_": [');
-    if (comments.length > 0) {
-      lines.push(comments.map((s) => "    " + JSON.stringify(s)).join(",\n"));
-    }
-    lines.push("  ],");
-
-    lines.push(`  "v": ${data.v != null ? data.v : 1},`);
-    lines.push(`  "t": ${data.t != null ? data.t : 0.125},`);
-    lines.push(`  "m": ${arrBlock(data.m)},`);
-    lines.push(`  "c": ${arrBlock(data.c)},`);
-    lines.push(`  "n": ${data.n != null ? data.n : 1}`);
-    lines.push("}");
-
-    const json = lines.join("\n");
-
-    const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `robot_state_${new Date()
-      .toISOString()
-      .slice(0, 19)
-      .replace(/[:-]/g, "")}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
   async _import(e) {
     const file = this.dom.fileInput.files[0];
     if (!file) return;
@@ -1747,13 +1733,27 @@ export class UIBinder {
               ph = phiDeg.toFixed(2);
 
             const filename = `screenshot_${ts}_${fx}_${fy}_${fz}_${d}_${th}_${ph}_${w}x${h}.png`;
-            const a = document.createElement("a");
-            a.download = filename;
-            a.href = url;
-            a.click();
-            this.notification.showSuccess(
-              t("toast-screenshot", { width: w, height: h })
-            );
+            // 支持选择保存路径（系统另存为对话框；不支持的浏览器回退为下载）
+            fetch(url)
+              .then((r) => r.blob())
+              .then((blob) =>
+                this._saveBlob(blob, filename, {
+                  description: "PNG 图片",
+                  accept: { "image/png": [".png"] },
+                })
+              )
+              .then((r) => {
+                if (r.success) {
+                  this.notification.showSuccess(
+                    t("toast-screenshot", { width: w, height: h })
+                  );
+                } else if (r.error) {
+                  this.notification.showError(r.error);
+                }
+              })
+              .catch((err) => {
+                this.notification.showError("截图保存失败: " + err.message);
+              });
           })
           .catch((err) => {
             this.notification.showError("截图失败: " + err.message);
@@ -1804,25 +1804,10 @@ export class UIBinder {
   }
 
   // ==================== 拓扑图 ====================
-  _onTopoDrawToggle() {
-    const enabled = this.dom.topoDrawCheckbox.checked;
-    if (!this.topoAutoUpdate) {
-      this.topoDrawEnabled = enabled;
-      this._updateTopoStatusDisplay();
-      if (this.topoDrawEnabled) {
-        this._safeRefreshTopology();
-      } else {
-        this.topologyRenderer.clearCanvas();
-      }
-    } else {
-      this.dom.topoDrawCheckbox.checked = true;
-      this.notification.showInfo(t("topo-auto-hint"), 1500);
-    }
-  }
-
+  /** Ctrl+Shift+R：用户手动触发，任意模式下强制重绘 */
   _refreshTopology() {
     this.topologyRenderer.setEnabled(true);
-    this.topologyRenderer.refresh(this.appState._topoHighlightId);
+    this.topologyRenderer.forceRefresh(this.appState._topoHighlightId);
     this.notification.showSuccess(t("topo-refreshed"), 1500);
   }
 
@@ -1884,36 +1869,53 @@ export class UIBinder {
     this.dom.topoModal.classList.remove("visible");
   }
 
-  _saveTopoModal() {
+  async _saveTopoModal() {
     const canvas = this.dom.topoModalCanvas;
     if (!canvas) return;
-    const a = document.createElement("a");
-    a.download = `topology_${new Date()
-      .toISOString()
-      .slice(0, 19)
-      .replace(/[:-]/g, "")}.png`;
-    a.href = canvas.toDataURL("image/png");
-    a.click();
+    try {
+      const blob = await this._canvasToPngBlob(canvas);
+      const name = `topology_${new Date().toISOString().slice(0, 19).replace(/[:-]/g, "")}.png`;
+      const r = await this._saveBlob(blob, name, {
+        description: "PNG 图片",
+        accept: { "image/png": [".png"] },
+      });
+      if (r.success) this.notification.showSuccess(t("topo-save") + " ✓");
+      else if (r.error) this.notification.showError(r.error);
+    } catch (err) {
+      this.notification.showError(err.message);
+    }
   }
 
-  _saveTopo() {
+  async _saveTopo() {
     const canvas = this.dom.topologyCanvas;
     if (!canvas) return;
-    const a = document.createElement("a");
-    a.download = `topology_${new Date()
-      .toISOString()
-      .slice(0, 19)
-      .replace(/[:-]/g, "")}.png`;
-    a.href = canvas.toDataURL("image/png");
-    a.click();
+    try {
+      const blob = await this._canvasToPngBlob(canvas);
+      const name = `topology_${new Date().toISOString().slice(0, 19).replace(/[:-]/g, "")}.png`;
+      const r = await this._saveBlob(blob, name, {
+        description: "PNG 图片",
+        accept: { "image/png": [".png"] },
+      });
+      if (r.success) this.notification.showSuccess(t("topo-save") + " ✓");
+      else if (r.error) this.notification.showError(r.error);
+    } catch (err) {
+      this.notification.showError(err.message);
+    }
   }
 
-  _safeRefreshTopology() {
-    if (this.topoDrawEnabled) {
-      this.topologyRenderer.forceRefresh(this.appState._topoHighlightId);
-    } else {
-      this.topologyRenderer.clearCanvas(); // 需实现 clearCanvas
+  /**
+   * 拓扑图安全刷新。
+   * - 机构数 ≤ 界限（自动模式）：允许自动刷新（内部仍按 版本+高亮+主题 缓存键去重）
+   * - 机构数 > 界限（手动模式）：跳过一切自动刷新，仅在 force=true（用户点击"刷新"控件）时重绘
+   * @param {boolean} force - 用户手动触发（刷新按钮），手动模式下也强制执行
+   */
+  _safeRefreshTopology(force = false) {
+    if (!force && !this.topoAutoUpdate) {
+      // 手动模式：不自动更新，保留现有画面，等待用户点击刷新控件
+      return;
     }
+    // 缓存键命中时自动跳过（拓扑/高亮/主题变化会自动失效）
+    this.topologyRenderer.refresh(this.appState._topoHighlightId);
   }
 
   // ==================== 网格 ====================
@@ -2386,19 +2388,23 @@ export class UIBinder {
     document.addEventListener("keydown", (e) => {
       const isInput =
         e.target.tagName === "INPUT" || e.target.tagName === "TEXTAREA";
+      const mod = e.ctrlKey || e.metaKey;
+      const key = e.key.toLowerCase(); // 统一小写，避免 CapsLock/Shift 导致匹配失败
       if (isInput) {
         if (e.key === "Delete" || e.key === "Backspace") return;
-        if ((e.ctrlKey || e.metaKey) && e.key === "z") return;
-        if ((e.ctrlKey || e.metaKey) && e.key === "y") return;
+        // 输入框内 Ctrl+Z/Y 交给浏览器原生撤销
+        if (mod && (key === "z" || key === "y")) return;
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
-        e.preventDefault();
-        this._undo();
-        return;
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === "y") {
+      // 重做：Ctrl+Y 或 Ctrl+Shift+Z
+      if (mod && (key === "y" || (key === "z" && e.shiftKey))) {
         e.preventDefault();
         this._redo();
+        return;
+      }
+      // 撤销：Ctrl+Z
+      if (mod && key === "z") {
+        e.preventDefault();
+        this._undo();
         return;
       }
       if ((e.key === "Delete" || e.key === "Backspace") && !isInput) {
@@ -2406,48 +2412,39 @@ export class UIBinder {
         this._onDelete();
         return;
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === "s" && !e.shiftKey) {
+      if (mod && key === "s" && !e.shiftKey) {
         e.preventDefault();
         this._export();
         return;
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === "o" && !e.shiftKey) {
+      if (mod && key === "o" && !e.shiftKey) {
         e.preventDefault();
         this.dom.fileInput.click();
         return;
       }
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        e.shiftKey &&
-        (e.key === "E" || e.key === "e")
-      ) {
+      if (mod && e.shiftKey && key === "e") {
         e.preventDefault();
         this._takeScreenshot();
         return;
       }
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        !e.shiftKey &&
-        e.key >= "1" &&
-        e.key <= "4"
-      ) {
+      if (mod && !e.shiftKey && e.key >= "1" && e.key <= "4") {
         e.preventDefault();
         const panels = ["ui", "gen", "op", "conn"];
         const idx = parseInt(e.key) - 1;
         if (panels[idx]) this._showPanel(panels[idx]);
         return;
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === "l" && !e.shiftKey) {
+      if (mod && key === "l" && !e.shiftKey) {
         e.preventDefault();
         this._toggleMechList();
         return;
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === "h" && !e.shiftKey) {
+      if (mod && key === "h" && !e.shiftKey) {
         e.preventDefault();
         this._toggleHideUI();
         return;
       }
-      if ((e.ctrlKey || e.metaKey) && e.key === "c" && !e.shiftKey) {
+      if (mod && key === "c" && !e.shiftKey) {
         if (isInput) return;
         e.preventDefault();
         if (this.appState.selectedConnA && this.appState.selectedConnB) {
@@ -2457,20 +2454,16 @@ export class UIBinder {
         }
         return;
       }
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        e.shiftKey &&
-        (e.key === "R" || e.key === "r")
-      ) {
+      if (mod && e.shiftKey && key === "r") {
         e.preventDefault();
         this._refreshTopology();
         return;
       }
+      // 帮助：? 或 /（"?" 在大多数键盘布局上需要按 Shift，因此不限制 shift）
       if (
-        (e.key === "?" || e.key === "/") &&
+        (e.key === "?" || (e.key === "/" && !e.shiftKey)) &&
         !e.ctrlKey &&
-        !e.metaKey &&
-        !e.shiftKey
+        !e.metaKey
       ) {
         e.preventDefault();
         this._toggleHelp();
@@ -2498,7 +2491,7 @@ export class UIBinder {
 
     this.appState.updateAllFrames();
 
-    // ---- 强制刷新拓扑图（无论版本是否变化）----
+    // ---- 刷新拓扑图（TopologyRenderer 内部按 版本+高亮+主题 缓存，未变化自动跳过）----
     if (this.topologyRenderer.enabled) {
       this._safeRefreshTopology();
     }
@@ -2508,58 +2501,79 @@ export class UIBinder {
     this._updateConnectionMatrix();
   }
 
-  updateTopoStatusDisplay() {
-    const count = this.appState.mechanisms.length;
-    const auto = count < 10;
-    const el = this.dom.topoStatusDisplay;
-    if (el) {
-      el.textContent = auto ? t("topo-status-auto") : t("topo-status-manual");
-      el.style.color = auto ? "var(--success)" : "var(--highlight)";
-    }
-    // 同步绘制开关的勾选状态
-    this.dom.topoDrawCheckbox.checked = this.topoDrawEnabled;
-    // 在手动模式下允许用户操作，自动模式下禁用（或保持可操作）
-    this.dom.topoDrawCheckbox.disabled = !auto; // 自动模式下不可手动关闭
-  }
-
+  /**
+   * 拓扑刷新模式：机构数 ≤ 界限自动刷新（随增减/选中更新），超过则仅手动刷新。
+   * 切换为手动时保留现有画面；切换回自动时立即恢复自动刷新。同步状态显示。
+   */
   _updateTopoMode() {
-    const count = this.appState.mechanisms.length;
-    const auto = count < 10;
+    const auto = this._topoAutoAllowed();
     if (this.topoAutoUpdate !== auto) {
       this.topoAutoUpdate = auto;
-      this.topoDrawEnabled = this.topoAutoUpdate; // 自动开启，手动关闭
     }
+    // 同步渲染器层的自动刷新闸门（拦截所有绕过 _safeRefreshTopology 的 refresh 调用）
+    this.topologyRenderer.autoRefresh = auto;
     this._updateTopoStatusDisplay();
-    if (this.topoAutoUpdate && this.topoDrawEnabled) {
-      this._safeRefreshTopology();
-    } else if (!this.topoDrawEnabled) {
-      this.topologyRenderer.clearCanvas();
-    }
+    this._safeRefreshTopology();
+  }
+
+  _topoAutoAllowed() {
+    return this.appState.mechanisms.length <= this.topoAutoMax;
   }
 
   _updateTopoStatusDisplay() {
-    const count = this.appState.mechanisms.length;
-    const auto = count < 10;
+    const auto = this._topoAutoAllowed();
     const el = this.dom.topoStatusDisplay;
     if (el) {
-      el.textContent = auto ? t("topo-status-auto") : t("topo-status-manual");
+      // 状态徽标附当前界限值，便于确认输入框生效
+      el.textContent = `${auto ? t("topo-status-auto") : t("topo-status-manual")} · ≤${this.topoAutoMax}`;
       el.style.color = auto ? "var(--success)" : "var(--highlight)";
     }
-    // 同步绘制开关的勾选状态
-    this.dom.topoDrawCheckbox.checked = this.topoDrawEnabled;
-    this.dom.topoDrawCheckbox.disabled = auto; // 自动模式下禁用
+    // 同步界限输入框
+    if (this.dom.topoAutoMaxInput) {
+      this.dom.topoAutoMaxInput.value = this.topoAutoMax;
+    }
+  }
+
+  /** 界限输入框：实时调整自动绘制数量界限 */
+  _onTopoAutoMaxChange() {
+    const input = this.dom.topoAutoMaxInput;
+    if (!input) return;
+    let v = parseInt(input.value, 10);
+    if (isNaN(v)) v = TOPO_AUTO_MAX;
+    v = Math.max(1, Math.min(200, v));
+    input.value = v;
+    if (v !== this.topoAutoMax) {
+      this.topoAutoMax = v;
+      this._updateTopoMode(); // 可能跨越自动/手动边界，立即生效
+    }
   }
 
   // ==================== 机构列表 ====================
+  /**
+   * 双环锁定标记缓存：仅随拓扑版本重算（每次 O(N·E) 的 DFS 不再随刷新频率执行）
+   */
+  _getLoopLockFlags() {
+    const v = this.appState._topoVersion;
+    if (this._loopFlags && this._loopFlags.version === v) {
+      return this._loopFlags.flags;
+    }
+    const flags = this.appState.mechanisms.map((_, idx) =>
+      this.appState.isInBothLoops(idx)
+    );
+    this._loopFlags = { version: v, flags };
+    return flags;
+  }
+
   _updateMechList() {
     const container = this.dom.mechPanelContent;
     const mechs = this.appState.mechanisms;
     if (mechs.length === 0) {
       container.innerHTML = `<div class="mech-empty">${t("list-empty")}</div>`;
       container.onclick = null;
+      this._mechListSig = null;
+      this._mechListItems = null;
       return;
     }
-    const frag = document.createDocumentFragment();
     // 计算每个机构的连接数
     const connCounts = new Map();
     for (const c of this.appState.connections) {
@@ -2568,13 +2582,71 @@ export class UIBinder {
       connCounts.set(a, (connCounts.get(a) || 0) + 1);
       connCounts.set(b, (connCounts.get(b) || 0) + 1);
     }
+    const lockFlags = this._getLoopLockFlags();
 
+    // 结构签名：语言 + 激活项 + 每机构 id/连接数/双环锁；变化才重建 DOM
+    const sigParts = [getLang(), this.appState.activeIdx];
     mechs.forEach((m, idx) => {
-      const div = document.createElement("div");
-      div.className = `mech-item ${
-        idx === this.appState.activeIdx ? "active" : ""
-      }`;
-      div.dataset.idx = idx;
+      sigParts.push(m.id, connCounts.get(idx) || 0, lockFlags[idx] ? 1 : 0);
+    });
+    const sig = sigParts.join("|");
+
+    if (sig !== this._mechListSig || !this._mechListItems) {
+      this._mechListSig = sig;
+      const frag = document.createDocumentFragment();
+      this._mechListItems = new Map();
+      mechs.forEach((m, idx) => {
+        const div = document.createElement("div");
+        div.className = `mech-item ${
+          idx === this.appState.activeIdx ? "active" : ""
+        }`;
+        div.dataset.idx = idx;
+        const cc = connCounts.get(idx) || 0;
+        const badge =
+          cc > 0 ? `<span class="mech-conn-badge">🔗${cc}</span>` : "";
+        const lock = lockFlags[idx] ? " 🔒" : "";
+        div.innerHTML = `
+          <div class="mech-id">#${m.id} ${badge}${lock}</div>
+          <div class="mech-detail">
+            <span class="label">${t("list-pos")}</span>
+            <span class="value mech-v-pos"></span>
+            <span class="label">${t("list-rot")}</span>
+            <span class="value mech-v-rot"></span>
+            <span class="label">${t("list-l-angle")}</span>
+            <span class="value mech-v-langle"></span>
+            <span class="label">${t("list-normal-dir")}</span>
+            <span class="value highlight mech-v-normal"></span>
+            <span class="label">${t("list-normal-start")}</span>
+            <span class="value mech-v-nstart"></span>
+          </div>
+        `;
+        this._mechListItems.set(idx, {
+          pos: div.querySelector(".mech-v-pos"),
+          rot: div.querySelector(".mech-v-rot"),
+          langle: div.querySelector(".mech-v-langle"),
+          normal: div.querySelector(".mech-v-normal"),
+          nstart: div.querySelector(".mech-v-nstart"),
+        });
+        frag.appendChild(div);
+      });
+      container.innerHTML = "";
+      container.appendChild(frag);
+      container.onclick = (e) => {
+        const item = e.target.closest(".mech-item");
+        if (item) {
+          const idx = parseInt(item.dataset.idx, 10);
+          // 设置激活索引
+          this.appState.setActive(idx);
+          // 立即刷新 UI（包括连接列表、操作面板等）
+          this._refreshUI();
+        }
+      };
+    }
+
+    // 数值就地更新（坐标/旋转/角度/法向随动画逐帧刷新，但不重建 DOM）
+    mechs.forEach((m, idx) => {
+      const refs = this._mechListItems.get(idx);
+      if (!refs) return;
       const euler = new THREE.Euler().setFromQuaternion(
         m.group.quaternion,
         "XYZ"
@@ -2582,51 +2654,12 @@ export class UIBinder {
       const rx = normalizeAngleDeg(THREE.MathUtils.radToDeg(euler.x));
       const ry = normalizeAngleDeg(THREE.MathUtils.radToDeg(euler.y));
       const rz = normalizeAngleDeg(THREE.MathUtils.radToDeg(euler.z));
-      const cc = connCounts.get(idx) || 0;
-      const badge =
-        cc > 0 ? `<span class="mech-conn-badge">🔗${cc}</span>` : "";
-      const lock = this.appState.isInBothLoops(idx) ? " 🔒" : "";
-      div.innerHTML = `
-        <div class="mech-id">#${m.id} ${badge}${lock}</div>
-        <div class="mech-detail">
-          <span class="label">${t("list-pos")}</span>
-          <span class="value">(${m.position.x.toFixed(
-            2
-          )}, ${m.position.y.toFixed(2)}, ${m.position.z.toFixed(2)})</span>
-          <span class="label">${t("list-rot")}</span>
-          <span class="value">X=${rx.toFixed(2)}° Y=${ry.toFixed(
-        2
-      )}° Z=${rz.toFixed(2)}°</span>
-          <span class="label">${t("list-l-angle")}</span>
-          <span class="value">${m.l1Angle.toFixed(2)}° / ${m.l2Angle.toFixed(
-        2
-      )}°</span>
-          <span class="label">${t("list-normal-dir")}</span>
-          <span class="value highlight">(${m.normal.x.toFixed(
-            3
-          )}, ${m.normal.y.toFixed(3)}, ${m.normal.z.toFixed(3)})</span>
-          <span class="label">${t("list-normal-start")}</span>
-          <span class="value">(${/* 法向量起点 */ 0}, 0, 0)</span>
-        </div>
-      `;
-      frag.appendChild(div);
+      refs.pos.textContent = `(${m.position.x.toFixed(2)}, ${m.position.y.toFixed(2)}, ${m.position.z.toFixed(2)})`;
+      refs.rot.textContent = `X=${rx.toFixed(2)}° Y=${ry.toFixed(2)}° Z=${rz.toFixed(2)}°`;
+      refs.langle.textContent = `${m.l1Angle.toFixed(2)}° / ${m.l2Angle.toFixed(2)}°`;
+      refs.normal.textContent = `(${m.normal.x.toFixed(3)}, ${m.normal.y.toFixed(3)}, ${m.normal.z.toFixed(3)})`;
+      refs.nstart.textContent = `(${m.position.x.toFixed(2)}, ${m.position.y.toFixed(2)}, ${m.position.z.toFixed(2)})`;
     });
-    container.innerHTML = "";
-    container.appendChild(frag);
-    container.onclick = (e) => {
-      const item = e.target.closest(".mech-item");
-      if (item) {
-        const idx = parseInt(item.dataset.idx, 10);
-        // 设置激活索引
-        this.appState.setActive(idx);
-        // 立即刷新 UI（包括连接列表、操作面板等）
-        this._refreshUI();
-        // 显式强制刷新拓扑图（确保一定执行）
-        if (this.topologyRenderer.enabled) {
-          this._safeRefreshTopology();
-        }
-      }
-    };
   }
 
   /**
@@ -2813,27 +2846,29 @@ export class UIBinder {
       if (dec) dec.disabled = locked;
     });
 
-    // ---- 填充机构数据 ----
-    this.dom.renameId.value = mech.id;
-    this.dom.posX.value = mech.position.x.toFixed(2);
-    this.dom.posY.value = mech.position.y.toFixed(2);
-    this.dom.posZ.value = mech.position.z.toFixed(2);
+    // ---- 填充机构数据（动画进行中跳过输入框回写，避免每帧打断用户输入）----
+    if (!this.appState.animState.active) {
+      this.dom.renameId.value = mech.id;
+      this.dom.posX.value = mech.position.x.toFixed(2);
+      this.dom.posY.value = mech.position.y.toFixed(2);
+      this.dom.posZ.value = mech.position.z.toFixed(2);
 
-    const euler = new THREE.Euler().setFromQuaternion(
-      mech.group.quaternion,
-      "XYZ"
-    );
-    this.dom.rotX.value = normalizeAngleDeg(
-      THREE.MathUtils.radToDeg(euler.x)
-    ).toFixed(2);
-    this.dom.rotY.value = normalizeAngleDeg(
-      THREE.MathUtils.radToDeg(euler.y)
-    ).toFixed(2);
-    this.dom.rotZ.value = normalizeAngleDeg(
-      THREE.MathUtils.radToDeg(euler.z)
-    ).toFixed(2);
-    this.dom.l1Angle.value = mech.l1Angle.toFixed(2);
-    this.dom.l2Angle.value = mech.l2Angle.toFixed(2);
+      const euler = new THREE.Euler().setFromQuaternion(
+        mech.group.quaternion,
+        "XYZ"
+      );
+      this.dom.rotX.value = normalizeAngleDeg(
+        THREE.MathUtils.radToDeg(euler.x)
+      ).toFixed(2);
+      this.dom.rotY.value = normalizeAngleDeg(
+        THREE.MathUtils.radToDeg(euler.y)
+      ).toFixed(2);
+      this.dom.rotZ.value = normalizeAngleDeg(
+        THREE.MathUtils.radToDeg(euler.z)
+      ).toFixed(2);
+      this.dom.l1Angle.value = mech.l1Angle.toFixed(2);
+      this.dom.l2Angle.value = mech.l2Angle.toFixed(2);
+    }
 
     // ---- 显示信息 ----
     this.dom.selMechId.textContent = mech.id;
@@ -2944,6 +2979,10 @@ export class UIBinder {
         }
       }
     }
+    // 列表反选（highlightConnectionById）显式标记的连接也保持高亮
+    for (const id of this.appState.highlightedConnectionIds) {
+      highlightedIds.add(id);
+    }
 
     // ========== 渲染连接列表 ==========
     if (conns.length === 0) {
@@ -3001,6 +3040,16 @@ export class UIBinder {
         this._refreshUI();
         // 显示删除通知
         this.notification.showSuccess(t("toast-conn-del", { id }));
+        return;
+      }
+      // 反选：点击列表项 → 在 3D 场景高亮该连接的两个平面（再次点击取消）
+      const item = e.target.closest(".conn-item");
+      if (item) {
+        const id = parseInt(item.dataset.connId, 10);
+        if (this.appState.highlightConnectionById(id)) {
+          this._safeRefreshTopology();
+          this._refreshUI();
+        }
       }
     };
     list.addEventListener("click", this._connListHandler);
@@ -3093,14 +3142,7 @@ export class UIBinder {
       "status-badge " + (multiOn ? "on" : "off");
     this.dom.modeLabel.classList.toggle("active-label", multiOn);
 
-    const count = this.appState.mechanisms.length;
-    const auto = count < 10;
-    this.dom.topoStatusDisplay.textContent = auto
-      ? t("topo-status-auto")
-      : t("topo-status-manual");
-    this.dom.topoStatusDisplay.style.color = auto
-      ? "var(--success)"
-      : "var(--highlight)";
+    this._updateTopoStatusDisplay();
   }
 
   _updateCameraDisplay() {
@@ -3211,7 +3253,6 @@ export class UIBinder {
     this.dom.animCheckbox.checked = true;
     this.animEnabled = true;
     this._updateAnimStatus();
-    this.dom.topoDrawCheckbox.checked = true;
     this.topologyRenderer.setEnabled(true);
     this.dom.screenshotRes.value = "1080p";
     this.dom.screenshotCustom.style.display = "none";

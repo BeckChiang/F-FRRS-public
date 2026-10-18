@@ -1,5 +1,4 @@
 import * as THREE from "three";
-//import { createMechanism } from "../utils/GeometryUtils.js";
 import {
   createMechanism,
   computeWorldRotationFromNormals,
@@ -73,21 +72,6 @@ export class Mechanism {
       // 不再传入圆角参数
     );
     this.group.userData.mechanismRef = this;
-  }
-
-  /**
-   * 根据当前状态更新 Three.js 组（位置、旋转、L角度）
-   * 当外部修改了 position / worldRotation / l1Angle / l2Angle 后调用
-   */
-  updateFromState() {
-    if (!this.group) return;
-    this.group.position.copy(this.position);
-    this.group.quaternion.setFromEuler(this.worldRotation);
-    this.group.userData.l1.rotation.z = THREE.MathUtils.degToRad(this.l1Angle);
-    this.group.userData.l2.rotation.z = THREE.MathUtils.degToRad(this.l2Angle);
-    this.normal = new THREE.Vector3(0, 0, 1)
-      .applyEuler(this.worldRotation)
-      .normalize();
   }
 
   /**

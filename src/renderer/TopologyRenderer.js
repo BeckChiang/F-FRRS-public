@@ -19,13 +19,17 @@ export class TopologyRenderer {
     this.canvas = canvas;
     this.appState = appState;
     this.version = -1; // 记录上次绘制时的拓扑版本
+    this._lastCacheKey = null; // 拓扑图缓存键（版本+高亮+主题）
     this.imageData = null; // 缓存的图像数据（dataURL）
     this.enabled = true; // 是否启用绘制
+    this.autoRefresh = true; // 自动模式（≤ 阈值）：允许 refresh()；false 时仅 forceRefresh 重绘
     this._drawPending = false;
   }
 
   /**
-   * 刷新拓扑图（如果版本未变则直接使用缓存）
+   * 刷新拓扑图（缓存键：拓扑版本 + 高亮机构 + 高亮连接 + 主题）
+   * 未变化时直接跳过，避免每次 UI 刷新都重跑力导向布局；
+   * 手动模式（autoRefresh=false）下自动刷新一律跳过，仅响应 forceRefresh
    * @param {number|string} highlightedId - 高亮机构 ID
    */
   refresh(highlightedId) {
@@ -33,13 +37,20 @@ export class TopologyRenderer {
       this._drawDisabled();
       return;
     }
-    const currentVersion = this.appState._topoVersion;
-    if (currentVersion === this.version && this.imageData) {
-      this._renderImage();
-      return;
+    if (!this.autoRefresh) return; // 手动模式：保留现有画面，等待刷新控件
+    const key = this._cacheKey(highlightedId);
+    if (key === this._lastCacheKey && this.imageData) {
+      return; // 画布内容仍有效，无需重绘
     }
-    this.version = currentVersion;
+    this._lastCacheKey = key;
+    this.version = this.appState._topoVersion;
     this._draw(highlightedId);
+  }
+
+  _cacheKey(highlightedId) {
+    const theme = document.body?.classList?.contains?.("light-theme") ? "light" : "dark";
+    const connSig = Array.from(this.appState.highlightedConnectionIds || []).join(",");
+    return `${this.appState._topoVersion}|${highlightedId}|${connSig}|${theme}`;
   }
 
   /**
@@ -89,23 +100,9 @@ export class TopologyRenderer {
   }
 
   /**
-   * 显示缓存的图像
+   * 清空画布（保留兼容；禁用状态由 _drawDisabled 绘制提示）
    */
-  _renderImage() {
-    if (!this.imageData) return;
-    const canvas = this.canvas;
-    const ctx = canvas.getContext("2d");
-    const img = new Image();
-    img.onload = () => {
-      canvas.width = img.width;
-      canvas.height = img.height;
-      ctx.drawImage(img, 0, 0);
-    };
-    img.src = this.imageData;
-  }
-
   clearCanvas() { }
-
   /**
    * 禁用时显示提示信息
    */
@@ -138,7 +135,7 @@ export class TopologyRenderer {
     if (!enabled) {
       this._drawDisabled();
     } else {
-      this.version = -1;
+      this._lastCacheKey = null;
       this.refresh(this.appState._topoHighlightId);
     }
   }
@@ -149,6 +146,8 @@ export class TopologyRenderer {
    */
   // TopologyRenderer.js
   forceRefresh(highlightedId) {
+    // 强制重绘后该键视为已缓存，避免紧跟着的相同 refresh 再画一次
+    this._lastCacheKey = this._cacheKey(highlightedId);
     this.version = -1;
     this.imageData = null;
     this._drawPending = false;

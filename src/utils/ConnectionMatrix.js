@@ -2,11 +2,11 @@
 import * as THREE from "three";
 
 /**
- * ´Ó»ú¹¹¼ÆËãÆ½Ãæ·¨ÏòÁ¿¾ØÕó
- * ·µ»Ø [a, b, c]£º
- *   a = Æ½Ãæ1·¨ÏòÁ¿£¨ÊÀ½ç×ø±ê£¬³¤¶È=cubeSize£©
- *   b = Æ½Ãæ2·¨ÏòÁ¿£¨ÊÀ½ç×ø±ê£¬³¤¶È=cubeSize£©
- *   c = Æ½Ãæ4·¨ÏòÁ¿£¨ÊÀ½ç×ø±ê£¬³¤¶È=cubeSize£©
+ * ä»æœºæ„è®¡ç®—å¹³é¢æ³•å‘é‡çŸ©é˜µ
+ * è¿”å› [a, b, c]ï¼š
+ *   a = å¹³é¢1æ³•å‘é‡ï¼ˆä¸–ç•Œåæ ‡ï¼Œé•¿åº¦=cubeSizeï¼‰
+ *   b = å¹³é¢2æ³•å‘é‡ï¼ˆä¸–ç•Œåæ ‡ï¼Œé•¿åº¦=cubeSizeï¼‰
+ *   c = å¹³é¢4æ³•å‘é‡ï¼ˆä¸–ç•Œåæ ‡ï¼Œé•¿åº¦=cubeSizeï¼‰
  */
 export function computeNormals(mech) {
   const qW = mech.group
@@ -31,7 +31,7 @@ export function computeNormals(mech) {
   return [a, b, c];
 }
 
-/** ·µ»Ø { axis, dir1 }£¨Óë MATLAB planeAxisDir1 Ò»ÖÂ£© */
+/** è¿”å› { axis, dir1 }ï¼ˆä¸ MATLAB planeAxisDir1 ä¸€è‡´ï¼‰ */
 function planeAxisDir1(mech, planeIdx) {
   const [a, b, c] = computeNormals(mech);
   let axis, ref;
@@ -99,21 +99,21 @@ function findParallelCode(mech, planeIdx, refDir) {
 }
 
 /**
- * ¹¹½¨Á¬½Ó¾ØÕó£¨ÒÆÖ²×Ô MATLAB buildConnectionMatrix£©
- * @returns {Array<Array<number>>} (N+1)¡Á(N+3) ¶şÎ¬Êı×é
- *   ĞĞ 0..N-1 ¡ú »ú¹¹£»ĞĞ N ¡ú »ù×¼Æ½Ãæ
- *   ÁĞ 0..N-1 ¡ú »ú¹¹£»ÁĞ N..N+2 ¡ú x,y,z
- *   ¶Ô½ÇÏß T[i][i] = (s_i - 1) * 4 + ÄÚ²¿±ß±àÂë (1..4)
+ * æ„å»ºè¿æ¥çŸ©é˜µï¼ˆç§»æ¤è‡ª MATLAB buildConnectionMatrixï¼‰
+ * @returns {Array<Array<number>>} (N+1)Ã—(N+3) äºŒç»´æ•°ç»„
+ *   è¡Œ 0..N-1 â†’ æœºæ„ï¼›è¡Œ N â†’ åŸºå‡†å¹³é¢
+ *   åˆ— 0..N-1 â†’ æœºæ„ï¼›åˆ— N..N+2 â†’ x,y,z
+ *   å¯¹è§’çº¿ T[i][i] = (s_i - 1) * 4 + å†…éƒ¨è¾¹ç¼–ç  (1..4)
  */
 export function buildConnectionMatrix(mechs, conns) {
   const N = mechs.length;
   if (N === 0) return [];
 
-  // Ê¹ÓÃ 1 ÆğÊ¼Ë÷Òı£¨Ë÷Òı 0 Õ¼Î»£©
+  // ä½¿ç”¨ 1 èµ·å§‹ç´¢å¼•ï¼ˆç´¢å¼• 0 å ä½ï¼‰
   const M = Array.from({ length: N + 2 }, () => new Array(N + 4).fill(0));
   const idxToPos = (k) => k + 1;
 
-  // 1. ×ø±ê
+  // 1. åæ ‡
   for (let k = 0; k < N; k++) {
     const row = idxToPos(k);
     const p = mechs[k].position;
@@ -122,7 +122,7 @@ export function buildConnectionMatrix(mechs, conns) {
     M[row][N + 3] = p.z;
   }
 
-  // 2. Á¬½Ó£¨·Ç¶Ô½Ç£©
+  // 2. è¿æ¥ï¼ˆéå¯¹è§’ï¼‰
   for (const c of conns) {
     const aIdx = c.planeA.mechanismIndex;
     const bIdx = c.planeB.mechanismIndex;
@@ -139,13 +139,13 @@ export function buildConnectionMatrix(mechs, conns) {
     }
   }
 
-  // 3. ¶Ô½ÇÏß
+  // 3. å¯¹è§’çº¿
   for (let k = 0; k < N; k++) {
     const row = idxToPos(k);
     const mechA = mechs[k];
     const sI = mechA.cubeSize;
 
-    // ÕÒĞĞÖĞµÚÒ»¸ö·ÇÁãÏî£¨Ìø¹ı¶Ô½ÇÏß±¾Éí£¬ÉĞÎ´Ğ´Èë£©
+    // æ‰¾è¡Œä¸­ç¬¬ä¸€ä¸ªéé›¶é¡¹ï¼ˆè·³è¿‡å¯¹è§’çº¿æœ¬èº«ï¼Œå°šæœªå†™å…¥ï¼‰
     let jPos = -1;
     for (let col = 1; col <= N; col++) {
       if (M[row][col] !== 0) {
@@ -169,7 +169,7 @@ export function buildConnectionMatrix(mechs, conns) {
     M[row][row] = (sI - 1) * 4 + code;
   }
 
-  // È¥µôË÷Òı 0£¬·µ»Ø (N+1)¡Á(N+3)
+  // å»æ‰ç´¢å¼• 0ï¼Œè¿”å› (N+1)Ã—(N+3)
   const result = [];
   for (let i = 1; i <= N + 1; i++) {
     result.push(M[i].slice(1, N + 4));

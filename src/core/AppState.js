@@ -4,7 +4,6 @@ import { Mechanism } from "./Mechanism.js";
 import { Connection } from "./Connection.js";
 import { History } from "./History.js";
 import {
-  getPlaneWorldCenter,
   normalizeAngleDeg,
   easeInOutCubic,
   snapAngle,
@@ -93,6 +92,7 @@ export class AppState {
     this.onUpdate = null;
     this._topoHighlightId = null;
     this._animEnabled = true;
+    this._epoch = 0; // 状态纪元：每次 restore（撤销/重做/导入）自增，用于丢弃过期提交
 
     this.animState = {
       active: false,
@@ -108,6 +108,8 @@ export class AppState {
       easing: "easeInOut",
       noConstraint: false,
       arcData: null,
+      epoch: 0,
+      completedEpoch: null,
     };
   }
 
@@ -138,6 +140,18 @@ export class AppState {
     for (const c of this.connections) {
       if (c.planeA.mechanismIndex > idx) c.planeA.mechanismIndex--;
       if (c.planeB.mechanismIndex > idx) c.planeB.mechanismIndex--;
+    }
+
+    // 清理指向被删机构的选择/选中状态（索引大于被删项的同步前移）
+    if (this.selectedPlaneData) {
+      if (this.selectedPlaneData.mechanismIndex === idx) this.selectedPlaneData = null;
+      else if (this.selectedPlaneData.mechanismIndex > idx) this.selectedPlaneData.mechanismIndex--;
+    }
+    for (const key of ["selectedConnA", "selectedConnB"]) {
+      const sel = this[key];
+      if (!sel) continue;
+      if (sel.mechanismIndex === idx) this[key] = null; // 网格已销毁，无需恢复材质
+      else if (sel.mechanismIndex > idx) sel.mechanismIndex--;
     }
 
     this.mechanisms.splice(idx, 1);
@@ -398,6 +412,120 @@ export class AppState {
     }
   }
 
+  /**
+   * 把 mechanismIndex + planeIndex 解析为可高亮的平面 hit 对象。
+   * mechanismIndex = -1 表示基准平面。
+   * @returns {object|null} hit（含 mesh），找不到时返回 null
+   */
+  _resolvePlaneHit(side) {
+    if (side.mechanismIndex === -1) {
+      const base = this.sceneManager && this.sceneManager.refPlane;
+      if (!base) return null;
+      return {
+        mesh: base,
+        planeIndex: side.planeIndex,
+        mechanismIndex: -1,
+        isBasePlane: true,
+      };
+    }
+    const mech = this.mechanisms[side.mechanismIndex];
+    if (!mech || !mech.group) return null;
+    const plane = (mech.group.userData.allPlanes || []).find(
+      (p) => p.planeIndex === side.planeIndex
+    );
+    if (!plane) return null;
+    return {
+      mesh: plane.mesh,
+      planeName: plane.planeName,
+      planeIndex: plane.planeIndex,
+      mechanismIndex: side.mechanismIndex,
+      mechanismGroup: plane.mechanismGroup,
+      lPartGroup: plane.lPartGroup,
+    };
+  }
+
+  /**
+   * 由已连接列表反选：在 3D 场景中高亮该连接的两个平面。
+   * 再次点击同一条连接则取消选择（toggle）。
+   * @param {number} connId - 连接 id
+   * @returns {boolean} 是否处理成功
+   */
+  highlightConnectionById(connId) {
+    const conn = this.connections.find((c) => c.id === connId);
+    if (!conn) return false;
+
+    const samePlane = (sel, side) =>
+      sel &&
+      sel.mechanismIndex === side.mechanismIndex &&
+      sel.planeIndex === side.planeIndex;
+
+    // 已选中该连接的两个平面 → 反选（取消高亮，恢复列表点击前的平面选择）
+    if (
+      (samePlane(this.selectedConnA, conn.planeA) &&
+        samePlane(this.selectedConnB, conn.planeB)) ||
+      (samePlane(this.selectedConnA, conn.planeB) &&
+        samePlane(this.selectedConnB, conn.planeA))
+    ) {
+      this.clearConnectionSelection();
+      this.highlightedConnectionIds.clear();
+      if (this._connListPrevSel !== undefined) {
+        this.selectedPlaneData = this._connListPrevSel;
+        this._connListPrevSel = undefined;
+      }
+      this._markDirty();
+      return true;
+    }
+
+    // 清空旧高亮，避免材质泄漏
+    this.clearConnectionSelection();
+    this.clearConnectionChainHighlight();
+    this.clearHighlights();
+
+    const hitA = this._resolvePlaneHit(conn.planeA);
+    const hitB = this._resolvePlaneHit(conn.planeB);
+
+    if (hitA && hitA.mesh) {
+      const orig = hitA.mesh.material;
+      hitA.mesh.material = matConnCyan.clone();
+      hitA.mesh.material.needsUpdate = true;
+      this.selectedConnA = {
+        mesh: hitA.mesh,
+        originalMaterial: orig,
+        mechanismIndex: conn.planeA.mechanismIndex,
+        planeIndex: conn.planeA.planeIndex,
+      };
+    }
+    if (
+      hitB &&
+      hitB.mesh &&
+      hitB.mesh !== (hitA && hitA.mesh) // 自环保护
+    ) {
+      const orig = hitB.mesh.material;
+      hitB.mesh.material = matConnPurple.clone();
+      hitB.mesh.material.needsUpdate = true;
+      this.selectedConnB = {
+        mesh: hitB.mesh,
+        originalMaterial: orig,
+        mechanismIndex: conn.planeB.mechanismIndex,
+        planeIndex: conn.planeB.planeIndex,
+      };
+    }
+
+    // 激活机构/拓扑高亮/操作面板跟随 planeA
+    if (conn.planeA.mechanismIndex >= 0) {
+      this.activeIdx = conn.planeA.mechanismIndex;
+      const mech = this.mechanisms[conn.planeA.mechanismIndex];
+      this._topoHighlightId = mech ? mech.id : null;
+    }
+    this._connListPrevSel = this.selectedPlaneData; // 记住反选前的状态，再次点击可恢复
+    this.selectedPlaneData = hitA || null;
+
+    this.highlightedConnectionIds.clear();
+    this.highlightedConnectionIds.add(conn.id);
+    this._markDirty();
+    return true;
+  }
+
   clearConnectionSelection() {
     if (this.selectedConnA) {
       this.restoreMaterial(this.selectedConnA);
@@ -551,25 +679,14 @@ export class AppState {
     }
   }
 
-  // ----- 约束（不变）-----
+  // ----- 约束（关系仅记录，不修改坐标）-----
+  /**
+   * 连接约束处理。
+   * 连接（无论同尺寸还是不同尺寸）只表示拓扑关系，不影响机构实际坐标。
+   * 此方法保留仅为兼容既有调用点，不再做任何坐标强制对齐。
+   */
   applyConstraints() {
-    if (this.connections.length === 0) return;
-    let changed = false;
-    for (const c of this.connections) {
-      const mA = this.mechanisms[c.planeA.mechanismIndex];
-      const mB = this.mechanisms[c.planeB.mechanismIndex];
-      if (!mA || !mB) continue;
-      if (Math.abs(mA.cubeSize - mB.cubeSize) > 0.001) continue;
-      const ca = getPlaneWorldCenter(mA, c.planeA.planeIndex);
-      const cb = getPlaneWorldCenter(mB, c.planeB.planeIndex);
-      const delta = ca.clone().sub(cb);
-      if (delta.length() > 0.0001) {
-        mB.position.add(delta);
-        mB.group.position.copy(mB.position);
-        changed = true;
-      }
-    }
-    if (changed) this._markDirty();
+    //  intentionally empty：连接仅建立关系，不移动机构。
   }
 
   /**
@@ -818,6 +935,8 @@ export class AppState {
     this.animState.easing = "easeInOut";
     this.animState.noConstraint = !!noConstraint;
     this.animState.arcData = arcData;
+    this.animState.epoch = this._epoch;
+    this.animState.completedEpoch = null;
   }
 
   cancelAnimation() {
@@ -829,6 +948,7 @@ export class AppState {
         this.animState.hasL2
       );
       this.animState.active = false;
+      this.animState.completedEpoch = this.animState.epoch;
       if (this.animState.onComplete) {
         const cb = this.animState.onComplete;
         this.animState.onComplete = null;
@@ -902,34 +1022,12 @@ export class AppState {
       }
     }
 
-    if (
-      !this.animState.noConstraint &&
-      this.connections.length > 0 &&
-      this.animState.affectedIndices.length > 0
-    ) {
-      const aff = new Set(this.animState.affectedIndices);
-      for (const c of this.connections) {
-        const ia = c.planeA.mechanismIndex,
-          ib = c.planeB.mechanismIndex;
-        if (!aff.has(ia) || !aff.has(ib)) continue;
-        const mA = this.mechanisms[ia],
-          mB = this.mechanisms[ib];
-        if (!mA || !mB) continue;
-        if (Math.abs(mA.cubeSize - mB.cubeSize) > 0.001) continue;
-        const ca = getPlaneWorldCenter(mA, c.planeA.planeIndex);
-        const cb = getPlaneWorldCenter(mB, c.planeB.planeIndex);
-        const delta = ca.clone().sub(cb);
-        if (delta.length() > 0.0001) {
-          mB.position.add(delta);
-          mB.group.position.copy(mB.position);
-        }
-      }
-    }
-
     this._markDirty();
 
     if (raw >= 1) {
+      const epoch = this.animState.epoch;
       this.animState.active = false;
+      this.animState.completedEpoch = epoch;
       this.applyTargetState(
         this.animState.target,
         this.animState.affectedIndices,
@@ -942,7 +1040,8 @@ export class AppState {
         this.animState.onComplete = null;
         cb();
       }
-      this._saveState();
+      // 仅当动画期间未发生撤销/重做时才提交状态，避免截断 redo 分支
+      if (epoch === this._epoch) this._saveState();
     }
   }
 
@@ -1098,6 +1197,23 @@ export class AppState {
   }
 
   restore(data) {
+    // 记录撤销前的选中上下文（按机构 id 记忆，重建后重新解析），尽量在恢复后还原
+    const prevActiveId =
+      this.activeIdx >= 0 && this.mechanisms[this.activeIdx]
+        ? this.mechanisms[this.activeIdx].id
+        : null;
+    const prevSel = this.selectedPlaneData
+      ? {
+          mechId:
+            this.selectedPlaneData.mechanismIndex >= 0 &&
+            this.mechanisms[this.selectedPlaneData.mechanismIndex]
+              ? this.mechanisms[this.selectedPlaneData.mechanismIndex].id
+              : null,
+          planeIndex: this.selectedPlaneData.planeIndex,
+          isBase: this.selectedPlaneData.mechanismIndex === -1,
+        }
+      : null;
+
     // 清理旧机构
     for (const m of this.mechanisms) {
       this.sceneManager.removeObject(m.group);
@@ -1114,6 +1230,7 @@ export class AppState {
     this._adjList.clear();
     this._chainCache.clear();
     this._topoHighlightId = null;
+    this._epoch++; // 标记一次状态恢复，使动画完成时的过期提交失效
 
     // ===== 格式判断：旧格式含 data.mechanisms，新格式用 data.m =====
     const isLegacy = Array.isArray(data.mechanisms);
@@ -1194,12 +1311,53 @@ export class AppState {
     this._chainCache.clear();
     this._topoVersion++;
 
+    // 恢复激活机构：优先按撤销前的机构 id 找回，找不到则回退到第一个
+    let restoredActive = 0;
+    if (prevActiveId !== null) {
+      const i = this.mechanisms.findIndex((m) => m.id === prevActiveId);
+      restoredActive = i !== -1 ? i : 0;
+    }
     if (this.mechanisms.length > 0) {
-      this.activeIdx = 0;
-      this._topoHighlightId = this.mechanisms[0].id;
+      this.activeIdx = restoredActive;
+      this._topoHighlightId = this.mechanisms[restoredActive].id;
     } else {
       this.activeIdx = -1;
       this._topoHighlightId = null;
+    }
+
+    // 恢复撤销前选中的平面（重建后网格引用已失效，需重新解析）
+    this.selectedPlaneData = null;
+    if (prevSel) {
+      if (prevSel.isBase) {
+        const base = this.sceneManager.refPlane;
+        if (base) {
+          this.selectedPlaneData = {
+            mesh: base,
+            planeIndex: prevSel.planeIndex ?? 1,
+            mechanismIndex: -1,
+            isBasePlane: true,
+          };
+          this.activeIdx = -1;
+          this._topoHighlightId = null;
+        }
+      } else if (prevSel.mechId !== null) {
+        const mi = this.mechanisms.findIndex((m) => m.id === prevSel.mechId);
+        if (mi !== -1) {
+          const plane = this.mechanisms[mi].group.userData.allPlanes.find(
+            (p) => p.planeIndex === prevSel.planeIndex
+          );
+          if (plane) {
+            this.selectedPlaneData = {
+              mesh: plane.mesh,
+              planeName: plane.planeName,
+              planeIndex: plane.planeIndex,
+              mechanismIndex: mi,
+              mechanismGroup: plane.mechanismGroup,
+              lPartGroup: plane.lPartGroup,
+            };
+          }
+        }
+      }
     }
 
     this._correctPrecision();
@@ -1212,6 +1370,17 @@ export class AppState {
   _saveState() {
     this._correctPrecision(); // 保存前校正
     this.history.push(this.serialize());
+  }
+
+  /**
+   * 动画（或直接应用）完成后的状态提交。
+   * 若动画启动后发生过撤销/重做/导入（epoch 变化），则跳过提交，
+   * 避免把过期状态压入历史栈而截断 redo 分支。
+   */
+  _commitPostAnimation() {
+    const ce = this.animState.completedEpoch;
+    if (ce !== null && ce !== undefined && ce !== this._epoch) return;
+    this._saveState();
   }
 
   undo() {
@@ -1262,15 +1431,17 @@ export class AppState {
   renumber() {
     if (this.mechanisms.length === 0) return false;
 
+    // 先恢复高亮/选中材质，再清空记录。
+    // 注意：不能只清空数组——高亮网格的材质若不被恢复，将永远无法去除。
+    this.clearConnectionSelection();
+    this.clearConnectionChainHighlight();
+    this.clearHighlights();
+
     // 清空选择/高亮状态
     this.activeIdx = -1;
     this.selectedPlaneData = null;
-    this.selectedConnA = null;
-    this.selectedConnB = null;
     this.highlightedFrameIndices.clear();
     this.highlightedConnectionIds.clear();
-    this.chainHighlightedPlanesL1 = [];
-    this.chainHighlightedPlanesL2 = [];
     this._topoHighlightId = null;
 
     // 执行重排序（原地修改）

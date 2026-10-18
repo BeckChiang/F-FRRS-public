@@ -1,8 +1,8 @@
 // src/utils/Renumber.js
 
 /**
- * °´³ß´ç½µĞò·Ö×é + ×éÄÚÁ¬Í¨·ÖÁ¿Í¼±éÀúÖØĞÂ±àºÅ£¨º¬»Ø»·´¦Àí£©
- * Ô­µØĞŞ¸Ä mechs ºÍ conns¡£
+ * æŒ‰å°ºå¯¸é™åºåˆ†ç»„ + ç»„å†…è¿é€šåˆ†é‡å›¾éå†é‡æ–°ç¼–å·ï¼ˆå«å›ç¯å¤„ç†ï¼‰
+ * åŸåœ°ä¿®æ”¹ mechs å’Œ connsã€‚
  * @returns {{mechs, conns}}
  */
 export function renumberBySizeThenGraph(mechs, conns) {
@@ -10,11 +10,11 @@ export function renumberBySizeThenGraph(mechs, conns) {
   if (N === 0) return { mechs, conns };
 
   const allS = mechs.map((m) => m.cubeSize);
-  const nNode = N + 1; // ½Úµã 1 = »ù×¼Æ½Ãæ£¬½Úµã 2..N+1 = »ú¹¹
+  const nNode = N + 1; // èŠ‚ç‚¹ 1 = åŸºå‡†å¹³é¢ï¼ŒèŠ‚ç‚¹ 2..N+1 = æœºæ„
 
   const idxToNode = (idx) => (idx === -1 ? 1 : idx + 2);
 
-  // ÁÚ½Ó±í
+  // é‚»æ¥è¡¨
   const adj = Array.from({ length: nNode + 1 }, () => []);
   for (const c of conns) {
     const aNode = idxToNode(c.planeA.mechanismIndex);
@@ -25,14 +25,14 @@ export function renumberBySizeThenGraph(mechs, conns) {
     }
   }
 
-  // ×´Ì¬
+  // çŠ¶æ€
   const numbered = new Array(nNode + 1).fill(false);
-  numbered[1] = true; // »ù×¼Æ½ÃæÊÓÎªÒÑ±àºÅ
+  numbered[1] = true; // åŸºå‡†å¹³é¢è§†ä¸ºå·²ç¼–å·
   const newIdOf = new Array(nNode + 1).fill(0);
   newIdOf[1] = 0;
   let nextId = 1;
 
-  // °´³ß´ç½µĞò´¦Àí
+  // æŒ‰å°ºå¯¸é™åºå¤„ç†
   const uniqueS = [...new Set(allS)].sort((a, b) => b - a);
 
   for (const sz of uniqueS) {
@@ -44,7 +44,7 @@ export function renumberBySizeThenGraph(mechs, conns) {
     const remaining = new Set(idxSz.filter((n) => !numbered[n]));
 
     while (remaining.size > 0) {
-      // ---- Ñ¡ÖÖ×Ó ----
+      // ---- é€‰ç§å­ ----
       let bestSeed = -1,
         bestConn = -1,
         bestDeg = -1,
@@ -104,7 +104,7 @@ export function renumberBySizeThenGraph(mechs, conns) {
         }
       }
 
-      // ---- ·ÖÅäĞÂ id ----
+      // ---- åˆ†é…æ–° id ----
       for (const node of orderComp) {
         newIdOf[node] = nextId++;
         numbered[node] = true;
@@ -113,25 +113,25 @@ export function renumberBySizeThenGraph(mechs, conns) {
     }
   }
 
-  // ¾ÉË÷Òı ¡ú ĞÂ id
+  // æ—§ç´¢å¼• â†’ æ–° id
   const oldIdxToNewId = new Array(N);
   for (let k = 0; k < N; k++) {
     oldIdxToNewId[k] = newIdOf[k + 2];
   }
 
-  // ¸üĞÂ»ú¹¹ id
+  // æ›´æ–°æœºæ„ id
   for (let k = 0; k < N; k++) {
     mechs[k].id = oldIdxToNewId[k];
   }
 
-  // °´ĞÂ id ÅÅĞò
+  // æŒ‰æ–° id æ’åº
   mechs.sort((a, b) => a.id - b.id);
 
-  // ĞÂ id ¡ú ĞÂË÷Òı
+  // æ–° id â†’ æ–°ç´¢å¼•
   const newIdToNewIdx = new Map();
   mechs.forEach((m, idx) => newIdToNewIdx.set(m.id, idx));
 
-  // ¸üĞÂÁ¬½Ó
+  // æ›´æ–°è¿æ¥
   for (const c of conns) {
     const oldAIdx = c.planeA.mechanismIndex;
     const oldBIdx = c.planeB.mechanismIndex;
